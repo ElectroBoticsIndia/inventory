@@ -418,6 +418,72 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   .vendor-acts{width:100%}
   .vendor-acts .act-btn,.vendor-acts .btn-download{flex:1;justify-content:center;text-align:center}
 }
+/* ─── Searchable component picker (built for 300+ modules) ─── */
+.picker{position:relative;width:100%}
+.picker-inp{width:100%;font-family:var(--font-body);font-size:14px;padding:9px 12px;border:1px solid var(--border);
+  border-radius:8px;background:#fff;color:var(--text);outline:none}
+.picker-inp:focus{border-color:var(--accent)}
+.picker-inp.chosen{font-weight:600}
+.picker-inp.invalid{border-color:var(--red);background:var(--red-light)}
+.picker-menu{display:none;position:fixed;z-index:1400;background:var(--surface);
+  border:1px solid var(--accent);border-radius:10px;box-shadow:var(--shadow-lg);overflow:hidden}
+.picker-menu.open{display:block}
+.picker-cat{width:100%;font-family:var(--font-mono);font-size:11px;padding:8px 10px;border:none;
+  border-bottom:1px solid var(--border);background:var(--surface-alt);color:var(--text-dim);outline:none;cursor:pointer}
+.picker-list{max-height:264px;overflow-y:auto}
+.picker-opt{padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;gap:10px;transition:background .1s}
+.picker-opt:last-child{border-bottom:none}
+.picker-opt:hover,.picker-opt.hi{background:var(--accent-light)}
+.picker-opt .pn{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picker-opt .pc{font-family:var(--font-mono);font-size:10px;color:var(--text-light);margin-top:2px;font-weight:400;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.picker-opt .pq{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text-dim);flex:none}
+.picker-note{padding:9px 12px;font-family:var(--font-mono);font-size:10px;color:var(--text-light);
+  background:var(--surface-alt);text-align:center}
+.picker-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;
+  color:var(--text-light);font-size:17px;line-height:1;cursor:pointer;padding:2px 4px;display:none}
+.picker-clear.on{display:block}
+.picker-inp.has-clear{padding-right:30px}
+.sell-filters{display:flex;gap:8px;width:100%;flex-wrap:wrap}
+.sell-filters input{flex:2 1 180px;min-width:0}
+.sell-filters select{flex:1 1 130px;min-width:0;font-family:var(--font-body);font-size:13px;padding:9px 10px;
+  border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);outline:none}
+.sell-filters select:focus{border-color:var(--accent)}
+.central-tag{display:inline-block;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:.5px;
+  padding:1px 6px;border-radius:20px;background:var(--accent-light);color:var(--accent-dark);margin-left:6px}
+@media(max-width:600px){.picker-list{max-height:210px}}
+/* ─── Vendor options / purchase history ─── */
+.vendor-note{margin-top:4px;font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--text-dim)}
+.vendor-note .alt{color:var(--accent-dark)}
+.vendor-note .cheap{color:var(--green);font-weight:700}
+.vendor-note .cmt{color:var(--text-light);font-style:italic}
+.opt-cell{cursor:pointer;transition:background .15s}
+.opt-cell:hover{background:var(--accent-light)}
+.opt-count{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--accent-dark)}
+.opt-best{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);display:block}
+.opt-none{font-family:var(--font-mono);font-size:10px;color:var(--text-light)}
+.hist-row{display:grid;grid-template-columns:1fr auto;gap:6px 14px;padding:12px 0;border-bottom:1px solid var(--border)}
+.hist-row:last-child{border-bottom:none}
+.hist-row.best{background:linear-gradient(90deg,var(--green-bg),transparent 60%);
+  margin:0 -10px;padding-left:10px;padding-right:10px;border-radius:8px}
+.hist-v{font-size:14px;font-weight:700;color:var(--text)}
+.hist-meta{font-family:var(--font-mono);font-size:10px;color:var(--text-light);margin-top:2px}
+.hist-cmt{font-size:12px;color:var(--text-dim);margin-top:5px;line-height:1.5;grid-column:1/-1}
+.hist-price{text-align:right;white-space:nowrap}
+.hist-price .r{font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--text)}
+.hist-price .l{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);display:block}
+.hist-acts{grid-column:1/-1;display:flex;gap:6px;margin-top:6px}
+.hist-empty{padding:26px 8px;text-align:center;font-family:var(--font-mono);font-size:12px;color:var(--text-light)}
+.tag-quote{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;
+  background:var(--amber-bg);color:#9a7200;margin-left:6px}
+.tag-cur{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;
+  background:var(--accent);color:#fff;margin-left:6px}
+.purchase-block{border:1px solid var(--accent);background:var(--accent-light);border-radius:10px;
+  padding:14px 15px 4px;margin-top:4px}
+.purchase-block .pb-title{font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--accent-dark);margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -523,7 +589,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="page-sub" id="centresSub">Stock held at each location</div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="act-btn primary" id="centresMoveBtn" onclick="openMove()" style="display:none;">⇄ Move Stock</button>
+        <button class="act-btn primary" id="centresMoveBtn" onclick="openMove(null,null,'Transfer')" style="display:none;">⇄ Move Stock</button>
         <button class="btn-add" id="centresAddBtn" onclick="openCentreForm()" style="display:none;">+ New Centre</button>
       </div>
     </div>
@@ -600,8 +666,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     <div class="sell-grid">
       <div class="chart-card" style="margin-bottom:0;">
         <div class="chart-title">1 · Pick Components</div>
-        <div class="filter-group" style="width:100%;">
-          <input type="text" id="sellSearch" placeholder="Search item code, module or supplier…" oninput="renderPickList()" style="width:100%;">
+        <div class="sell-filters">
+          <input type="text" id="sellSearch" placeholder="Search code, module, SKU…" oninput="renderPickList()">
+          <select id="sellCat" onchange="renderPickList()"></select>
         </div>
         <div class="pick-list" id="pickList"></div>
       </div>
@@ -664,10 +731,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div id="lowBody" style="margin-top:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
             <div class="view-toggle">
-              <button class="view-tab active" id="lowTabCentre" onclick="setLowView('centre')">By centre</button>
+              <button class="view-tab active" id="lowTabCentre" onclick="setLowView('centre')">By location</button>
               <button class="view-tab" id="lowTabCompany" onclick="setLowView('company')">Company-wide</button>
             </div>
-            <div class="filter-group"><label>Centre</label><select id="lowCentreFilter" onchange="renderLow()"></select></div>
+            <div class="filter-group"><label>Location</label><select id="lowCentreFilter" onchange="renderLow()"></select></div>
           </div>
           <div class="hint" id="lowHint"></div>
           <div class="table-wrap"><table class="data-table" id="lowTable"></table></div>
@@ -751,7 +818,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="table-header">
           <div class="table-title">Centres</div>
           <div class="table-actions">
-            <button class="act-btn primary" onclick="openMove()">⇄ Move Stock</button>
+            <button class="act-btn primary" onclick="openMove(null,null,'Transfer')">⇄ Move Stock</button>
             <button class="btn-add" onclick="openCentreForm()">+ Add Centre</button>
           </div>
         </div>
@@ -804,7 +871,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="table-header">
           <div class="table-title">Stock Log <span id="moveCount" style="color:var(--text-light);"></span></div>
           <div class="table-actions">
-            <button class="act-btn primary" onclick="openMove()">⇄ Move Stock</button>
+            <button class="act-btn primary" onclick="openMove(null,null,'Transfer')">⇄ Move Stock</button>
             <button class="btn-download" onclick="exportMoves()">↓ Excel</button>
           </div>
         </div>
@@ -907,7 +974,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <button class="move-mode"        data-mode="Issue"    onclick="setMoveMode('Issue')"><span class="ic">📤</span>Issue /<br>damaged</button>
         <button class="move-mode"        data-mode="Recount"  onclick="setMoveMode('Recount')"><span class="ic">🔢</span>Physical<br>recount</button>
       </div>
-      <div class="form-row"><label>Module <span class="req">*</span></label><select id="mv_Item" onchange="renderMoveBalances()"></select></div>
+      <div class="form-row"><label>Module <span class="req">*</span></label><div id="mv_ItemHost"></div></div>
       <div class="bal-grid" id="mv_Balances"></div>
       <div class="form-grid" style="gap:0 14px;">
         <div class="form-row" id="mv_FromRow"><label>From <span class="req">*</span></label><select id="mv_From" onchange="renderMovePreview()"></select></div>
@@ -917,11 +984,71 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="form-row full"><label>Note</label><input type="text" id="mv_Note" placeholder="e.g. received from Robu, invoice 4471"></div>
       </div>
       <div class="move-preview" id="mv_Preview"></div>
+      <div class="purchase-block" id="mv_PurchaseBlock">
+        <div class="pb-title">Log this as a purchase <span style="text-transform:none;letter-spacing:0;font-weight:400;">— builds the buying-options history</span></div>
+        <div class="form-grid" style="gap:0 14px;">
+          <div class="form-row"><label>Vendor</label><div class="combo">
+            <select id="mv_Sup_sel" onchange="onComboSelect('mv_Sup')"></select>
+            <input type="text" id="mv_Sup_new" placeholder="New vendor" style="display:none;">
+            <button type="button" class="combo-back" id="mv_Sup_back" onclick="comboBack('mv_Sup')" style="display:none;">↩</button>
+          </div></div>
+          <div class="form-row"><label>Vendor SKU</label><input type="text" id="mv_SKU" placeholder="their part number"></div>
+          <div class="form-row"><label>Purchase Rate ₹</label><input type="number" step="0.01" id="mv_Rate" oninput="mvPurchasePreview()" placeholder="per unit"></div>
+          <div class="form-row"><label>Shipping %</label><input type="number" step="0.01" id="mv_Ship" oninput="mvPurchasePreview()" placeholder="0"></div>
+          <div class="form-row"><label>GST %</label><input type="number" step="0.01" id="mv_GST" oninput="mvPurchasePreview()" placeholder="18"></div>
+          <div class="form-row"><label>Handling %</label><input type="number" step="0.01" id="mv_Handle" oninput="mvPurchasePreview()" placeholder="0"></div>
+          <div class="form-row full"><label>Comments</label><input type="text" id="mv_Cmt" placeholder="lead time, MOQ, packaging, why this vendor…"></div>
+        </div>
+        <div class="move-preview" id="mv_PurchasePreview" style="margin-bottom:10px;"></div>
+        <label class="manual-toggle" style="margin:0 0 12px;"><input type="checkbox" id="mv_MakeCurrent"> Make this the current buying option for the module</label>
+      </div>
     </div>
     <div class="modal-msg" id="mv_Msg"></div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal('moveModal')">Cancel</button>
       <button class="btn-save" id="mv_SaveBtn" onclick="saveMove()">Apply</button>
+    </div>
+  </div>
+</div>
+
+<!-- Purchase history / buying options -->
+<div class="modal-overlay" id="histModal">
+  <div class="modal-card wide">
+    <div class="modal-head"><h3 id="histTitle">Buying Options</h3><button class="modal-close" onclick="closeModal('histModal')">&times;</button></div>
+    <div class="modal-body">
+      <div class="modal-sub" id="histSub"></div>
+      <div id="histList"></div>
+      <div id="histForm" style="display:none;border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+        <div class="pb-title" style="font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent-dark);margin-bottom:10px;" id="histFormTitle">Add a buying option</div>
+        <div class="form-grid" style="gap:0 14px;">
+          <div class="form-row"><label>Vendor <span class="req">*</span></label><div class="combo">
+            <select id="h_Sup_sel" onchange="onComboSelect('h_Sup')"></select>
+            <input type="text" id="h_Sup_new" placeholder="New vendor" style="display:none;">
+            <button type="button" class="combo-back" id="h_Sup_back" onclick="comboBack('h_Sup')" style="display:none;">↩</button>
+          </div></div>
+          <div class="form-row"><label>Vendor SKU</label><input type="text" id="h_SKU" placeholder="their part number"></div>
+          <div class="form-row"><label>Purchase Rate ₹ <span class="req">*</span></label><input type="number" step="0.01" id="h_Rate" oninput="histPreview()"></div>
+          <div class="form-row"><label>Qty <small style="text-transform:none;letter-spacing:0;">— blank = quote only</small></label><input type="number" step="1" id="h_Qty" placeholder="leave blank for a quote"></div>
+          <div class="form-row"><label>Shipping %</label><input type="number" step="0.01" id="h_Ship" oninput="histPreview()"></div>
+          <div class="form-row"><label>GST %</label><input type="number" step="0.01" id="h_GST" oninput="histPreview()"></div>
+          <div class="form-row"><label>Handling %</label><input type="number" step="0.01" id="h_Handle" oninput="histPreview()"></div>
+          <div class="form-row"><label>Date</label><input type="date" id="h_Date"></div>
+          <div class="form-row"><label>Reference</label><input type="text" id="h_Ref" placeholder="invoice / quote no."></div>
+          <div class="form-row"><label>&nbsp;</label><div style="height:38px;display:flex;align-items:center;">
+            <label class="manual-toggle" style="margin:0;"><input type="checkbox" id="h_MakeCurrent"> Make current</label></div></div>
+          <div class="form-row full"><label>Comments</label><textarea id="h_Cmt" rows="2" placeholder="lead time, MOQ, packaging, why you'd use this vendor…"></textarea></div>
+        </div>
+        <div class="move-preview" id="h_Preview"></div>
+      </div>
+    </div>
+    <div class="modal-msg" id="h_Msg"></div>
+    <div class="modal-foot">
+      <button class="btn-del" id="h_DelBtn" onclick="deletePurchaseEntry()" style="display:none;">Delete</button>
+      <button class="act-btn" id="h_AddBtn" onclick="histShowForm()">+ Add buying option</button>
+      <button class="btn-download" onclick="exportHistory()">↓ Excel</button>
+      <div class="spacer"></div>
+      <button class="btn-cancel" onclick="closeModal('histModal')">Close</button>
+      <button class="btn-save" id="h_SaveBtn" onclick="savePurchaseEntry()" style="display:none;">Save</button>
     </div>
   </div>
 </div>
@@ -1077,12 +1204,13 @@ const PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 
 // ══════════════════════════════════════════════════
 
 // Lowest Code.gs version this build needs. Bump both together.
-const REQUIRED_BACKEND = 3;
+const REQUIRED_BACKEND = 4;
 
 const SHEETS = {inv:'Inventory',kits:'Kits',bom:'KitComponents',centres:'Centres',cstock:'CentreStock',
-                moves:'StockMoves',orders:'Orders',sales:'Sales',items:'SaleItems',users:'Users'};
+                moves:'StockMoves',orders:'Orders',sales:'Sales',items:'SaleItems',
+                phist:'PurchaseHistory',users:'Users'};
 
-let INV=[],KITS=[],BOM=[],CENTRES=[],CSTOCK=[],MOVES=[],ORDERS=[],SALES=[],SALEITEMS=[],USERS=[];
+let INV=[],KITS=[],BOM=[],CENTRES=[],CSTOCK=[],MOVES=[],ORDERS=[],SALES=[],SALEITEMS=[],PHIST=[],USERS=[];
 let user=null,role='',demoMode=false,currentScreen='',currentKit=null,currentCentre=null;
 let _readyResolve;const dataReady=new Promise(r=>{_readyResolve=r;});
 
@@ -1139,6 +1267,39 @@ function kitByCode(code){return KITS.find(k=>same(k['Kit Code'],code))||null}
 function bomFor(kitCode){return BOM.filter(b=>same(b['Kit Code'],kitCode))}
 function kitColor(k){return (k&&k.Color)||'#008fa0'}
 
+// ─── Purchase history / buying options ──────────────────────────
+/** Every logged purchase or quote for a module, newest first. */
+function historyFor(code){
+  return PHIST.filter(h=>same(h['Item Code'],code))
+    .slice().sort((a,b)=>String(b.Date||'').localeCompare(String(a.Date||'')));
+}
+/** Landed cost of one history entry, using ITS OWN percentages — vendors differ. */
+function entryLanded(h){
+  const stored=num(h['Landed Cost']);
+  if(stored>0)return stored;
+  return costOf({'Purchase Rate':h['Purchase Rate'],'Shipping %':h['Shipping %'],
+                 'GST %':h['GST %'],'Handling %':h['Handling %']}).total;
+}
+/**
+ * One row per vendor — their most recent price — cheapest landed first.
+ * This is the "where else can I buy it" answer.
+ */
+function vendorOptions(code){
+  const by={};
+  historyFor(code).forEach(h=>{
+    const v=String(h.Supplier||'').trim();if(!v)return;
+    if(!by[v])by[v]={supplier:v,entry:h,landed:entryLanded(h),rate:num(h['Purchase Rate']),
+                     sku:h.SKU||'',date:h.Date||'',note:h.Comments||'',quote:!num(h.Qty)};
+  });
+  return Object.values(by).sort((a,b)=>a.landed-b.landed);
+}
+/** The most recent comment recorded against a module, whatever the vendor. */
+function lastNote(code){
+  const h=historyFor(code).find(x=>String(x.Comments||'').trim());
+  return h?{text:String(h.Comments).trim(),supplier:h.Supplier||'',date:h.Date||''}:null;
+}
+function cheapestOption(code){const o=vendorOptions(code);return o.length?o[0]:null}
+
 // ─── Locations ──────────────────────────────────────────────────
 function centreByCode(code){return CENTRES.find(c=>same(c['Centre Code'],code))||null}
 function isCentral(c){return c&&same(c.Type,'Central')}
@@ -1147,10 +1308,16 @@ function centralCode(){const c=centralCentre();return c?c['Centre Code']:'HQ'}
 function centreName(code){const c=centreByCode(code);return c?c['Centre Name']:(code||'—')}
 function centreColor(c){return (c&&c.Color)||'#008fa0'}
 function isActiveC(c){return !same(c.Status,'Inactive')}
-/** Teaching centres only (no central store), active first. */
+/** Teaching centres only — used where the central store genuinely doesn't belong. */
 function sellingCentres(){return CENTRES.filter(c=>!isCentral(c)&&isActiveC(c))}
 /** Every location: central store first, then teaching centres. */
 function allLocations(){const c=centralCentre();return (c?[c]:[]).concat(sellingCentres())}
+/**
+ * Every location that holds stock and can run low — the central store included.
+ * It has its own reorder level and gets flagged like any other location; the one
+ * difference is that it can't transfer from itself, so its advice is always Buy.
+ */
+function stockCentres(){return allLocations()}
 
 function csRow(itemCode,centreCode){
   return CSTOCK.find(r=>same(r['Item Code'],itemCode)&&same(r['Centre Code'],centreCode))||null;
@@ -1165,8 +1332,8 @@ function minAt(itemCode,centreCode){
 }
 function totalQty(itemCode){return CSTOCK.filter(r=>same(r['Item Code'],itemCode)).reduce((s,r)=>s+num(r.Qty),0)}
 function centralQty(itemCode){return qtyAt(itemCode,centralCode())}
-/** Company reorder level = the sum of what every teaching centre wants to hold. */
-function companyMin(itemCode){return sellingCentres().reduce((s,c)=>s+minAt(itemCode,c['Centre Code']),0)}
+/** Company reorder level = the sum of what every location wants to hold, central included. */
+function companyMin(itemCode){return stockCentres().reduce((s,c)=>s+minAt(itemCode,c['Centre Code']),0)}
 
 function stateAt(itemCode,centreCode){
   const q=qtyAt(itemCode,centreCode);
@@ -1195,18 +1362,20 @@ function lowAnalysis(){
   const rows=[],byItem={};
   INV.forEach(it=>{
     const code=it['Item Code'];
-    sellingCentres().forEach(c=>{
+    stockCentres().forEach(c=>{
       const cc=c['Centre Code'];
       const q=qtyAt(code,cc),m=minAt(code,cc);
       if(q>m)return;
-      (byItem[code]=byItem[code]||[]).push({item:it,code:code,centre:c,centreCode:cc,qty:q,min:m,short:Math.max(m-q,0),state:q<=0?'out':'low'});
+      (byItem[code]=byItem[code]||[]).push({item:it,code:code,centre:c,centreCode:cc,
+        isCentral:isCentral(c),qty:q,min:m,short:Math.max(m-q,0),state:q<=0?'out':'low'});
     });
   });
   Object.keys(byItem).forEach(code=>{
     let avail=centralQty(code);
     byItem[code].sort((a,b)=>b.short-a.short||a.qty-b.qty).forEach(r=>{
-      const t=Math.min(r.short,avail);
-      avail-=t;
+      // The central store cannot resupply itself — its own gap is always a purchase.
+      const t=r.isCentral?0:Math.min(r.short,avail);
+      if(!r.isCentral)avail-=t;
       r.fromCentral=t;r.toBuy=r.short-t;r.centralQty=centralQty(code);
       r.advice=r.short===0?'ok':(t>0&&r.toBuy===0)?'transfer':(t>0?'both':'buy');
       r.buyCost=r.toBuy*totalCostOf(r.item);
@@ -1251,7 +1420,8 @@ async function fetchSheet(name){
 function applyPayload(d){
   INV=d.inventory||[];KITS=d.kits||[];BOM=d.kitComponents||[];
   CENTRES=d.centres||[];CSTOCK=d.centreStock||[];MOVES=d.stockMoves||[];
-  ORDERS=d.orders||[];SALES=d.sales||[];SALEITEMS=d.saleItems||[];USERS=d.users||[];
+  ORDERS=d.orders||[];SALES=d.sales||[];SALEITEMS=d.saleItems||[];
+  PHIST=d.purchaseHistory||[];USERS=d.users||[];
 }
 
 async function loadData(){
@@ -1273,15 +1443,16 @@ async function loadData(){
     console.warn('Endpoint unavailable, falling back to gviz:',e.message);
     if(!SHEET_ID){showConfigError('Set <code>SHEET_WEBAPP_URL</code> (and <code>SHEET_ID</code>) at the top of the file.');loadDemoData();_readyResolve();return}
     try{
-      const names=[SHEETS.inv,SHEETS.kits,SHEETS.bom,SHEETS.centres,SHEETS.cstock,SHEETS.moves,SHEETS.orders,SHEETS.sales,SHEETS.items,SHEETS.users];
+      const names=[SHEETS.inv,SHEETS.kits,SHEETS.bom,SHEETS.centres,SHEETS.cstock,SHEETS.moves,
+                   SHEETS.orders,SHEETS.sales,SHEETS.items,SHEETS.phist,SHEETS.users];
       const r=await Promise.allSettled(names.map(fetchSheet));
       const g=i=>r[i].status==='fulfilled'?r[i].value:[];
       applyPayload({inventory:g(0),kits:g(1),kitComponents:g(2),centres:g(3),centreStock:g(4),
-                    stockMoves:g(5),orders:g(6),sales:g(7),saleItems:g(8),users:g(9)});
+                    stockMoves:g(5),orders:g(6),sales:g(7),saleItems:g(8),purchaseHistory:g(9),users:g(10)});
       if(r[0].status!=='fulfilled')throw r[0].reason;
       showConfigError('Read-only mode — <code>SHEET_WEBAPP_URL</code> is not reachable, so nothing can be saved.');
     }catch(e2){
-      showConfigError('Could not load the sheet: '+esc(e2.message)+'<br>Check the sheet is shared as “Anyone with the link · Viewer” and every tab exists: <code>Inventory</code>, <code>Kits</code>, <code>KitComponents</code>, <code>Centres</code>, <code>CentreStock</code>, <code>StockMoves</code>, <code>Orders</code>, <code>Sales</code>, <code>SaleItems</code>, <code>Users</code>.');
+      showConfigError('Could not load the sheet: '+esc(e2.message)+'<br>Check the sheet is shared as “Anyone with the link · Viewer” and every tab exists: <code>Inventory</code>, <code>Kits</code>, <code>KitComponents</code>, <code>Centres</code>, <code>CentreStock</code>, <code>StockMoves</code>, <code>Orders</code>, <code>Sales</code>, <code>SaleItems</code>, <code>PurchaseHistory</code>, <code>Users</code>.');
       loadDemoData();
     }
   }
@@ -1388,6 +1559,14 @@ function loadDemoData(){
   SALEITEMS=[
     {'Bill No':'EB-B-0001','Item Code':'EB-M-002','Module Name':'HC-SR04 Ultrasonic Sensor','Qty':'2','Rate':'110','Amount':'220'},
     {'Bill No':'EB-B-0001','Item Code':'EB-M-005','Module Name':'L298N Motor Driver','Qty':'1','Rate':'210','Amount':'210'}
+  ];
+  PHIST=[
+    {'Entry ID':'PH-000001','Item Code':'EB-M-002','Date':'2026-05-14','Supplier':'Robu.in','SKU':'RB-SR04','Purchase Rate':'68','Shipping %':'9','GST %':'18','Handling %':'5','Qty':'50','Ref':'RB-88120','Comments':'Standard stock item, ships in 2 days','By':'demo@electrobotics.in'},
+    {'Entry ID':'PH-000002','Item Code':'EB-M-002','Date':'2026-07-12','Supplier':'Robu.in','SKU':'RB-SR04','Purchase Rate':'62','Shipping %':'9','GST %':'18','Handling %':'5','Qty':'40','Ref':'RB-91455','Comments':'Price dropped on 40+ qty','By':'demo@electrobotics.in'},
+    {'Entry ID':'PH-000003','Item Code':'EB-M-002','Date':'2026-08-02','Supplier':'Evelta','SKU':'EV-HCSR04','Purchase Rate':'71','Shipping %':'0','GST %':'18','Handling %':'3','Qty':'','Ref':'','Comments':'Quote only — free shipping above 2k, good backup when Robu is out','By':'demo@electrobotics.in'},
+    {'Entry ID':'PH-000004','Item Code':'EB-M-003','Date':'2026-06-28','Supplier':'Element14','SKU':'E14-SG90','Purchase Rate':'78','Shipping %':'10','GST %':'18','Handling %':'5','Qty':'25','Ref':'E14-77120','Comments':'Long lead time — 10 days','By':'demo@electrobotics.in'},
+    {'Entry ID':'PH-000005','Item Code':'EB-M-003','Date':'2026-08-18','Supplier':'Sunrom','SKU':'SUN-SG90','Purchase Rate':'82','Shipping %':'4','GST %':'18','Handling %':'3','Qty':'20','Ref':'SN-4471','Comments':'Slightly dearer but next-day; used when Element14 was out of stock','By':'demo@electrobotics.in'},
+    {'Entry ID':'PH-000006','Item Code':'EB-M-009','Date':'2026-08-14','Supplier':'Element14','SKU':'E14-PICOW','Purchase Rate':'615','Shipping %':'5','GST %':'18','Handling %':'2','Qty':'8','Ref':'E14-77998','Comments':'Genuine RPi stock','By':'demo@electrobotics.in'}
   ];
   USERS=[{Email:'demo@electrobotics.in',Role:'admin',Name:'Demo Admin'}];
 }
@@ -1620,23 +1799,22 @@ function renderCentreDetail(){
   byId('cdName').textContent=c['Centre Name'];
   byId('cdSub').textContent=code+(central?' · Central store — purchases land here':'')+
     [c.City,c.Incharge?'Incharge: '+c.Incharge:'',c.Contact||''].filter(Boolean).map(x=>' · '+x).join('');
-  byId('cdActions').innerHTML=role==='admin'
+  byId('cdActions').innerHTML=(role==='admin'
     ? `<button class="act-btn" onclick="openCentreForm('${esc(code)}')">Edit centre</button>
-       <button class="act-btn primary" onclick="openMove(null,'${esc(code)}')">⇄ Move stock</button>`+
-      (central?'':`<button class="act-btn wa" onclick="waCentreLow('${esc(code)}')">Send low list</button>`)
-    : (central?'':`<button class="act-btn wa" onclick="waCentreLow('${esc(code)}')">Send low list</button>`);
+       <button class="act-btn primary" onclick="openMove(null,'${esc(code)}','Transfer')">⇄ Move stock</button>` : '')+
+    `<button class="act-btn wa" onclick="waCentreLow('${esc(code)}')">Send low list</button>`;
 
   byId('cdStats').innerHTML=`
     <div class="stat-card accent"><div class="stat-label">Stock Value</div><div class="stat-value" style="font-size:23px;">${money0(s.value)}</div><div class="stat-sub">${s.units} units · ${s.skus} modules held</div></div>
-    <div class="stat-card ${s.out?'red':'green'}"><div class="stat-label">Out of Stock</div><div class="stat-value">${s.out}</div><div class="stat-sub">${central?'nothing left centrally':'modules at zero here'}</div></div>
-    <div class="stat-card ${s.low?'amber':'green'}"><div class="stat-label">Below Level</div><div class="stat-value">${s.low}</div><div class="stat-sub">${central?'—':'at or under reorder level'}</div></div>
+    <div class="stat-card ${s.out?'red':'green'}"><div class="stat-label">Out of Stock</div><div class="stat-value">${s.out}</div><div class="stat-sub">modules at zero here</div></div>
+    <div class="stat-card ${s.low?'amber':'green'}"><div class="stat-label">Below Level</div><div class="stat-value">${s.low}</div><div class="stat-sub">at or under reorder level</div></div>
     <div class="stat-card purple"><div class="stat-label">Kits Buildable</div><div class="stat-value">${KITS.reduce((n,k)=>n+kitStats(k['Kit Code'],code).buildable,0)}</div><div class="stat-sub">across all ${KITS.length} kits, from stock here</div></div>`;
 
   const analysis=lowAnalysis();
   const mine=analysis.rows.filter(r=>same(r.centreCode,code));
-  const list=cdView==='short'&&!central?mine.map(r=>r.item)
+  const list=cdView==='short'?mine.map(r=>r.item)
             :INV.filter(it=>cdView==='all'||num(qtyAt(it['Item Code'],code))>0);
-  const showAdvice=!central;
+  const showAdvice=true;
   byId('cdTable').innerHTML=`<thead><tr><th>Item Code</th><th>Module</th><th>Supplier</th>
       <th class="num">Here</th><th class="num">Min</th><th class="num">Central</th><th class="num">Company</th>
       <th>Status</th>${showAdvice?'<th>Action</th>':''}${role==='admin'?'<th></th>':''}</tr></thead><tbody>`+
@@ -1646,9 +1824,9 @@ function renderCentreDetail(){
       const row=mine.find(r=>same(r.code,ic));
       return `<tr><td class="mono">${esc(ic)}</td><td>${esc(it['Module Name'])}</td><td>${esc(it.Supplier||'')}</td>
         <td class="qty-cell ${qtyCellClass(ic,code)}">${q}</td>
-        <td class="num" style="color:var(--text-light)">${central?'—':m}</td>
+        <td class="num" style="color:var(--text-light)">${m}</td>
         <td class="num">${centralQty(ic)}</td><td class="num">${totalQty(ic)}</td>
-        <td>${central?(q>0?'<span class="badge ok">Held</span>':'<span class="badge neutral">None</span>'):badge(st)}</td>
+        <td>${badge(st)}</td>
         ${showAdvice?`<td>${row?adviceHtml(row):'<span class="advice ok">OK</span>'}</td>`:''}
         ${role==='admin'?`<td><button class="act-btn primary" onclick="openMove('${esc(ic)}','${esc(code)}')">Move</button></td>`:''}</tr>`;
     }).join(''):`<tr><td colspan="10" class="tbl-empty">${cdView==='short'?'Nothing below its reorder level here. 🎉':'No stock recorded at this location yet.'}</td></tr>`)+'</tbody>';
@@ -1664,6 +1842,7 @@ function renderCentreDetail(){
 
 function adviceHtml(r){
   if(r.short<=0)return '<span class="advice ok">OK</span>';
+  if(r.isCentral)return `<span class="advice buy">Buy ${r.toBuy}</span>`;
   if(r.advice==='transfer')return `<span class="advice transfer">⇄ Move ${r.fromCentral} from ${esc(centreName(r.centralQty!==undefined?centralCode():''))}</span>`;
   if(r.advice==='both')return `<span class="advice transfer">⇄ Move ${r.fromCentral}</span> <span class="advice buy">Buy ${r.toBuy}</span>`;
   return `<span class="advice buy">Buy ${r.toBuy}</span>`;
@@ -1681,8 +1860,10 @@ function buildCombos(){
   fillSelect('fLoc','All locations',locLabels);
   fillSelect('mLoc','All locations',locLabels);
   fillSelect('kitsLocFilter','All locations (company-wide)',locLabels);
-  fillSelect('lowCentreFilter','All centres',sellingCentres().map(c=>c['Centre Code']+' — '+c['Centre Name']));
+  fillSelect('lowCentreFilter','All locations',allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']));
   fillSelect('i_OpenLoc','',locLabels);
+  fillCombo('mv_Sup',uniq(INV.map(i=>i.Supplier).concat(PHIST.map(h=>h.Supplier))));
+  fillCombo('h_Sup',uniq(INV.map(i=>i.Supplier).concat(PHIST.map(h=>h.Supplier))));
 }
 function fillCombo(fid,values){
   const sel=byId(fid+'_sel');const cur=sel.value;
@@ -1721,6 +1902,135 @@ function setComboValue(fid,value){
   else if(value){sel.style.display='none';byId(fid+'_new').style.display='';byId(fid+'_back').style.display='';byId(fid+'_new').value=value;}
 }
 
+
+// ─── Searchable component picker ────────────────────────────────
+// A native <select> is unusable at 300+ modules, so this is a text box that
+// filters as you type, narrowed by category, with arrow-key + Enter selection.
+// The chosen Item Code lives in a hidden input so callers read it like a field.
+const PICKERS={};
+
+function pickerHTML(pid,value,placeholder,onPick){
+  PICKERS[pid]={hi:0,onPick:onPick||'',rows:[]};
+  const it=value?itemByCode(value):null;
+  return `<div class="picker" id="pk_${pid}">
+    <input class="picker-inp has-clear${it?' chosen':''}" id="pk_${pid}_inp" autocomplete="off" spellcheck="false"
+      placeholder="${esc(placeholder||'Search module, item code or SKU…')}"
+      value="${it?esc(it['Item Code']+' · '+it['Module Name']):''}"
+      oninput="pickerType('${pid}')" onfocus="pickerOpen('${pid}')"
+      onkeydown="pickerKey('${pid}',event)" onclick="event.stopPropagation()">
+    <button type="button" class="picker-clear${it?' on':''}" id="pk_${pid}_clr" onclick="pickerClear('${pid}',event)">&times;</button>
+    <input type="hidden" id="pk_${pid}_val" value="${esc(value||'')}">
+    <div class="picker-menu" id="pk_${pid}_menu" onclick="event.stopPropagation()">
+      <select class="picker-cat" id="pk_${pid}_cat" onchange="pickerRender('${pid}')"></select>
+      <div class="picker-list" id="pk_${pid}_list"></div>
+    </div>
+  </div>`;
+}
+/** Call once after the markup is in the DOM. */
+function pickerInit(pid){
+  const cat=byId('pk_'+pid+'_cat');
+  if(cat)cat.innerHTML='<option value="">All categories</option>'+
+    uniq(INV.map(i=>i.Category)).map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+}
+function pickerValue(pid){const el=byId('pk_'+pid+'_val');return el?el.value:''}
+function pickerSet(pid,code){
+  const it=code?itemByCode(code):null;
+  const v=byId('pk_'+pid+'_val'),i=byId('pk_'+pid+'_inp'),c=byId('pk_'+pid+'_clr');
+  if(!v)return;
+  v.value=it?it['Item Code']:'';
+  i.value=it?(it['Item Code']+' · '+it['Module Name']):'';
+  i.classList.toggle('chosen',!!it);i.classList.remove('invalid');
+  if(c)c.classList.toggle('on',!!it);
+}
+function pickerClear(pid,ev){
+  if(ev)ev.stopPropagation();
+  pickerSet(pid,'');
+  const st=PICKERS[pid];if(st&&st.onPick)try{window[st.onPick](pid)}catch(e){}
+  byId('pk_'+pid+'_inp').focus();pickerOpen(pid);
+}
+/**
+ * The menu is position:fixed and placed from the input's rect, so it can't be
+ * clipped by the scrollable modal body it lives in; it flips above the field
+ * when there isn't room below.
+ */
+function pickerPosition(pid){
+  const inp=byId('pk_'+pid+'_inp'),m=byId('pk_'+pid+'_menu');
+  if(!inp||!m||!m.classList.contains('open'))return;
+  const r=inp.getBoundingClientRect(),below=window.innerHeight-r.bottom;
+  m.style.left=r.left+'px';
+  m.style.width=r.width+'px';
+  if(below<240&&r.top>below){m.style.top='auto';m.style.bottom=(window.innerHeight-r.top+4)+'px'}
+  else{m.style.top=(r.bottom+4)+'px';m.style.bottom='auto'}
+}
+let pickerOpenId=null;
+function pickerOpen(pid){
+  document.querySelectorAll('.picker-menu.open').forEach(m=>{if(m.id!=='pk_'+pid+'_menu')m.classList.remove('open')});
+  byId('pk_'+pid+'_menu').classList.add('open');
+  pickerOpenId=pid;
+  PICKERS[pid].hi=0;pickerRender(pid);pickerPosition(pid);
+}
+function pickerClose(pid){const m=byId('pk_'+pid+'_menu');if(m)m.classList.remove('open');if(pickerOpenId===pid)pickerOpenId=null}
+// keep a fixed menu glued to its field while the page or a modal scrolls
+window.addEventListener('scroll',()=>{if(pickerOpenId)pickerPosition(pickerOpenId)},true);
+window.addEventListener('resize',()=>{if(pickerOpenId)pickerPosition(pickerOpenId)});
+function pickerType(pid){
+  // typing invalidates any previous choice until something new is picked
+  byId('pk_'+pid+'_val').value='';
+  byId('pk_'+pid+'_inp').classList.remove('chosen');
+  byId('pk_'+pid+'_clr').classList.toggle('on',!!byId('pk_'+pid+'_inp').value);
+  PICKERS[pid].hi=0;pickerOpen(pid);
+}
+function pickerMatches(pid){
+  const st=PICKERS[pid];
+  const cat=(byId('pk_'+pid+'_cat')||{}).value||'';
+  const raw=(byId('pk_'+pid+'_inp').value||'').trim().toLowerCase();
+  // once something is chosen the box shows "CODE · Name" — don't filter on that
+  const q=byId('pk_'+pid+'_val').value?'':raw;
+  const terms=q.split(/\s+/).filter(Boolean);
+  return INV.filter(i=>{
+    if(cat&&i.Category!==cat)return false;
+    if(!terms.length)return true;
+    const hay=[i['Item Code'],i['Module Name'],i.SKU,i.Supplier,i.Category].join(' ').toLowerCase();
+    return terms.every(t=>hay.includes(t));
+  });
+}
+function pickerRender(pid){
+  const st=PICKERS[pid];
+  const all=pickerMatches(pid);
+  st.rows=all.slice(0,60);
+  if(st.hi>=st.rows.length)st.hi=Math.max(st.rows.length-1,0);
+  const list=byId('pk_'+pid+'_list');
+  list.innerHTML=st.rows.length?st.rows.map((i,n)=>`
+    <div class="picker-opt ${n===st.hi?'hi':''}" onmousedown="pickerChoose('${pid}','${esc(i['Item Code'])}')" onmouseenter="pickerHi('${pid}',${n})">
+      <div class="pn">${esc(i['Module Name'])}
+        <div class="pc">${esc(i['Item Code'])}${i.SKU?' · '+esc(i.SKU):''}${i.Category?' · '+esc(i.Category):''}</div></div>
+      <div class="pq">${totalQty(i['Item Code'])}</div>
+    </div>`).join('')
+    :'<div class="picker-note">No module matches that search.</div>';
+  if(all.length>st.rows.length)list.innerHTML+=`<div class="picker-note">showing 60 of ${all.length} — keep typing to narrow</div>`;
+  const hi=list.querySelector('.picker-opt.hi');if(hi&&hi.scrollIntoView)hi.scrollIntoView({block:'nearest'});
+  pickerPosition(pid);
+}
+function pickerHi(pid,n){PICKERS[pid].hi=n;
+  [...byId('pk_'+pid+'_list').querySelectorAll('.picker-opt')].forEach((e,i)=>e.classList.toggle('hi',i===n))}
+function pickerChoose(pid,code){
+  pickerSet(pid,code);pickerClose(pid);
+  const st=PICKERS[pid];if(st&&st.onPick)try{window[st.onPick](pid)}catch(e){console.error(e)}
+}
+function pickerKey(pid,ev){
+  const st=PICKERS[pid];
+  const open=byId('pk_'+pid+'_menu').classList.contains('open');
+  if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){
+    ev.preventDefault();
+    if(!open){pickerOpen(pid);return}
+    st.hi=Math.max(0,Math.min(st.rows.length-1,st.hi+(ev.key==='ArrowDown'?1:-1)));
+    pickerRender(pid);
+  }else if(ev.key==='Enter'){
+    if(open&&st.rows[st.hi]){ev.preventDefault();pickerChoose(pid,st.rows[st.hi]['Item Code'])}
+  }else if(ev.key==='Escape'){pickerClose(pid)}
+}
+document.addEventListener('click',()=>{document.querySelectorAll('.picker-menu.open').forEach(m=>m.classList.remove('open'));pickerOpenId=null});
+
 // ─── Admin: tabs & render ───────────────────────────────────────
 function setTab(tab){
   document.querySelectorAll('.dash-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
@@ -1738,12 +2048,13 @@ function renderStats(){
   const centralValue=INV.reduce((s,i)=>s+centralQty(i['Item Code'])*totalCostOf(i),0);
   const a=lowAnalysis();
   const centresShort=uniq(a.rows.filter(r=>r.short>0).map(r=>r.centreCode)).length;
+  const locCount=stockCentres().length;
   const toBuy=a.rows.reduce((s,r)=>s+r.buyCost,0);
   const transfers=a.rows.filter(r=>r.fromCentral>0).length;
   const req=requirement();
   byId('admStats').innerHTML=`
     <div class="stat-card accent"><div class="stat-label">Stock Value</div><div class="stat-value" style="font-size:23px;">${money0(stockValue)}</div><div class="stat-sub">${money0(centralValue)} at central store</div></div>
-    <div class="stat-card ${centresShort?'amber':'green'}"><div class="stat-label">Centres Needing Stock</div><div class="stat-value">${centresShort} <span style="font-size:15px;color:var(--text-light)">/ ${sellingCentres().length}</span></div><div class="stat-sub">${a.rows.filter(r=>r.short>0).length} centre-module gaps</div></div>
+    <div class="stat-card ${centresShort?'amber':'green'}"><div class="stat-label">Centres Needing Stock</div><div class="stat-value">${centresShort} <span style="font-size:15px;color:var(--text-light)">/ ${locCount}</span></div><div class="stat-sub">${a.rows.filter(r=>r.short>0).length} location-module gaps</div></div>
     <div class="stat-card purple"><div class="stat-label">Covered by Transfer</div><div class="stat-value">${transfers}</div><div class="stat-sub">gaps the central store can fill today</div></div>
     <div class="stat-card ${toBuy>0?'red':'green'}"><div class="stat-label">Must Purchase</div><div class="stat-value" style="font-size:23px;">${money0(toBuy)}</div><div class="stat-sub">${req.rows.filter(r=>r.short>0).length} more modules short for kit orders</div></div>`;
 }
@@ -1776,12 +2087,12 @@ function renderLow(){
     return;
   }
 
-  byId('lowHint').innerHTML='Per-centre view: each centre against <b>its own</b> reorder level. Where the central store can cover the gap you get a <b>transfer</b>; only what it can\'t cover becomes a <b>purchase</b>.';
+  byId('lowHint').innerHTML='Per-location view: every location — the <b>central store included</b> — against its own reorder level. Where central can cover a centre\'s gap you get a <b>transfer</b>; central\'s own gap is always a <b>purchase</b>, since it can\'t resupply itself.';
   const filt=selCode('lowCentreFilter');
   const rows=cShort.filter(r=>!filt||same(r.centreCode,filt));
   byId('lowTable').innerHTML=`<thead><tr><th>Centre</th><th>Item Code</th><th>Module</th><th class="num">Here</th><th class="num">Level</th><th class="num">Short</th><th class="num">Central Has</th><th>Do this</th><th></th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>`<tr${r.state==='out'?' style="background:var(--red-light)"':''}>
-      <td><span class="loc-pill" style="background:${esc(centreColor(r.centre))}22;color:${esc(centreColor(r.centre))}">${esc(r.centre['Centre Name'])}</span></td>
+      <td><span class="loc-pill ${r.isCentral?'hq':''}" style="${r.isCentral?'':`background:${esc(centreColor(r.centre))}22;color:${esc(centreColor(r.centre))}`}">${esc(r.centre['Centre Name'])}</span></td>
       <td class="mono">${esc(r.code)}</td><td>${esc(r.item['Module Name'])}</td>
       <td class="qty-cell ${r.state==='out'?'out':'low'}">${r.qty}</td>
       <td class="num" style="color:var(--text-light)">${r.min}</td>
@@ -1902,7 +2213,7 @@ function renderInventory(){
     byId('invTable').innerHTML=`<thead><tr>
         <th>Item Code</th><th>Module</th><th>Supplier</th><th>SKU</th>
         <th class="num">Rate</th><th class="num">R/off</th><th class="num">Ship%</th><th class="num">GST%</th><th class="num">Handling%</th>
-        <th class="num">Total Cost</th><th class="price-cell">EB Cost</th><th class="num">Margin</th><th class="num">Stock Value</th><th>Date</th><th></th>
+        <th class="num">Total Cost</th><th class="price-cell">EB Cost</th><th class="num">Margin</th><th>Vendor Options &amp; Notes</th><th>Date</th><th></th>
       </tr></thead><tbody>`+
       (invRows.length?invRows.map(i=>{
         const tc=totalCostOf(i),eb=ebCostOf(i),tq=totalQty(i['Item Code']);const man=same(i['Price Mode'],'Manual');
@@ -1915,10 +2226,19 @@ function renderInventory(){
           <td class="num">${money(tc)}</td>
           <td class="price-cell"><span class="p">${money(eb,0)}</span><span class="pm">${man?'manual':'+'+MARGIN_PCT+'%'}</span></td>
           <td class="num cost-dim">${money0(eb-tc)}</td>
-          <td class="num cost-dim">${money0(tq*tc)}</td>
+          <td class="opt-cell" style="max-width:300px" onclick="openHistory('${esc(i['Item Code'])}')">
+            ${(()=>{const o=vendorOptions(i['Item Code']);
+              if(!o.length)return '<span class="opt-none">no history yet — click to add</span>';
+              const note=optionsNote(i['Item Code'],2);
+              return `<span class="opt-count">${o.length} vendor${o.length===1?'':'s'}</span>`+
+                `<span class="opt-best">best ${money(o[0].landed,0)} landed · ${esc(o[0].supplier)}</span>`+
+                (note?`<div class="vendor-note">${note}</div>`:'')})()}
+          </td>
           <td class="mono" style="font-size:11px">${esc(fmtDate(i.Date))}</td>
-          <td><button class="act-btn primary" onclick="openItemForm('${esc(i['Item Code'])}')">Edit</button></td></tr>`;
-      }).join(''):'<tr><td colspan="15" class="tbl-empty">No items match these filters.</td></tr>')+'</tbody>';
+          <td><div class="row-acts">
+            <button class="act-btn" onclick="openHistory('${esc(i['Item Code'])}')">History</button>
+            <button class="act-btn primary" onclick="openItemForm('${esc(i['Item Code'])}')">Edit</button></div></td></tr>`;
+      }).join(''):'<tr><td colspan="16" class="tbl-empty">No items match these filters.</td></tr>')+'</tbody>';
     return;
   }
 
@@ -1999,7 +2319,7 @@ function openItemForm(code){
 }
 function fromItemModal(what){
   const code=editingItem;closeModal('itemModal');
-  if(what==='move')openMove(code);else openMins(code);
+  if(what==='move')openMove(code);else if(what==='hist')openHistory(code);else openMins(code);
 }
 function recalcCost(){
   const draft={'Purchase Rate':byId('i_Rate').value,'Round Off Rate':byId('i_Round').value,
@@ -2091,20 +2411,188 @@ async function deleteItem(){
   refreshAll();closeModal('itemModal');
 }
 
+
+// ─── Purchase history / buying options ──────────────────────────
+// The point of this screen: when a vendor is out of stock, who else sells it
+// and at what landed price. Each entry keeps its OWN shipping/GST/handling %,
+// because a "cheaper" rate from a vendor who charges freight often isn't.
+let histItem=null,histEditId=null;
+
+function openHistory(code){
+  histItem=code;histEditId=null;
+  const it=itemByCode(code);if(!it)return;
+  buildCombos();
+  byId('histTitle').textContent='Buying Options — '+it['Module Name'];
+  const cur=cheapestOption(code);
+  byId('histSub').innerHTML=`${esc(code)} · current: <b>${esc(it.Supplier||'—')}</b> at ${money(it['Purchase Rate'],0)}`+
+    (cur&&!same(cur.supplier,it.Supplier)?` · cheapest logged: <b>${esc(cur.supplier)}</b> at ${money(cur.landed)} landed`:'');
+  byId('histForm').style.display='none';
+  byId('h_SaveBtn').style.display='none';
+  byId('h_DelBtn').style.display='none';
+  byId('h_AddBtn').style.display=role==='admin'?'':'none';
+  byId('h_Msg').textContent='';byId('h_Msg').className='modal-msg';
+  renderHistory();
+  openModalEl('histModal');
+}
+
+function renderHistory(){
+  const code=histItem,it=itemByCode(code);
+  const rows=historyFor(code);
+  const opts=vendorOptions(code);
+  const best=opts.length?opts[0].supplier:'';
+  byId('histList').innerHTML=rows.length?rows.map(h=>{
+    const landed=entryLanded(h),quote=!num(h.Qty);
+    const isBest=same(h.Supplier,best)&&same(h['Entry ID'],(opts[0].entry||{})['Entry ID']);
+    return `<div class="hist-row ${isBest?'best':''}">
+      <div>
+        <div class="hist-v">${esc(h.Supplier)}
+          ${quote?'<span class="tag-quote">QUOTE</span>':''}
+          ${same(h.Supplier,it&&it.Supplier)?'<span class="tag-cur">CURRENT</span>':''}</div>
+        <div class="hist-meta">${esc(fmtDate(h.Date))}${h.SKU?' · SKU '+esc(h.SKU):''}${num(h.Qty)?' · '+num(h.Qty)+' '+esc(it&&it.Unit||'pcs'):''}${h.Ref?' · '+esc(h.Ref):''}${h.By?' · '+esc(h.By):''}</div>
+      </div>
+      <div class="hist-price"><span class="r">${money(h['Purchase Rate'],0)}</span>
+        <span class="l">${money(landed)} landed</span></div>
+      ${h.Comments?`<div class="hist-cmt">${esc(h.Comments)}</div>`:''}
+      ${role==='admin'?`<div class="hist-acts">
+        <button class="act-btn" onclick="histShowForm('${esc(h['Entry ID'])}')">Edit</button>
+        <button class="act-btn primary" onclick="histMakeCurrent('${esc(h['Entry ID'])}')">Use as current</button>
+      </div>`:''}
+    </div>`;
+  }).join(''):'<div class="hist-empty">No buying options logged yet.'+(role==='admin'?' Add one, or record a vendor when you receive stock.':'')+'</div>';
+}
+
+function histShowForm(id){
+  histEditId=id||null;
+  const it=itemByCode(histItem);
+  const h=id?PHIST.find(x=>same(x['Entry ID'],id)):null;
+  byId('histFormTitle').textContent=h?'Edit buying option':'Add a buying option';
+  setComboValue('h_Sup',h?(h.Supplier||''):(it.Supplier||''));
+  byId('h_SKU').value=h?(h.SKU||''):(it.SKU||'');
+  byId('h_Rate').value=h?num(h['Purchase Rate']):num(it['Purchase Rate'])||'';
+  byId('h_Qty').value=h?(num(h.Qty)||''):'';
+  byId('h_Ship').value=h?(h['Shipping %']||''):(costOf(it).shipPc||'');
+  byId('h_GST').value=h?(h['GST %']||''):(costOf(it).gstPc||'');
+  byId('h_Handle').value=h?(h['Handling %']||''):(costOf(it).handlePc||'');
+  byId('h_Date').value=h?toDateInput(h.Date):today();
+  byId('h_Ref').value=h?(h.Ref||''):'';
+  byId('h_Cmt').value=h?(h.Comments||''):'';
+  byId('h_MakeCurrent').checked=false;
+  byId('histForm').style.display='';
+  byId('h_SaveBtn').style.display='';byId('h_SaveBtn').disabled=false;
+  byId('h_DelBtn').style.display=h?'':'none';
+  byId('h_Msg').textContent='';byId('h_Msg').className='modal-msg';
+  histPreview();
+  byId('histForm').scrollIntoView({block:'nearest'});
+}
+
+function histPreview(){
+  const c=costOf({'Purchase Rate':byId('h_Rate').value,'Shipping %':byId('h_Ship').value,
+    'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
+  const it=itemByCode(histItem);
+  const curLanded=totalCostOf(it);
+  const diff=c.total-curLanded;
+  byId('h_Preview').innerHTML=`Landed <b>${money(c.total)}</b> per unit &nbsp;·&nbsp; `+
+    `rate ${money(c.base,0)} + ${c.shipPc||0}% ship + ${c.gstPc||0}% GST + ${c.handlePc||0}% handling`+
+    (curLanded>0?`<br>Current buying option lands at ${money(curLanded)} — this one is `+
+      (Math.abs(diff)<0.005?'<b>the same</b>':`<b style="color:${diff<0?'var(--green)':'var(--red)'}">${diff<0?money(-diff)+' cheaper':money(diff)+' dearer'}</b>`):'');
+}
+
+function histEntryFromForm(){
+  const rate=byId('h_Rate').value.trim();
+  const c=costOf({'Purchase Rate':rate,'Shipping %':byId('h_Ship').value,
+    'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
+  return {'Item Code':histItem,'Date':byId('h_Date').value||today(),
+    'Supplier':comboValue('h_Sup'),'SKU':byId('h_SKU').value.trim(),
+    'Purchase Rate':rate,'Shipping %':byId('h_Ship').value.trim(),
+    'GST %':byId('h_GST').value.trim(),'Handling %':byId('h_Handle').value.trim(),
+    'Landed Cost':c.total.toFixed(2),'Qty':byId('h_Qty').value.trim(),
+    'Ref':byId('h_Ref').value.trim(),'Comments':byId('h_Cmt').value.trim(),
+    'By':(user&&user.email)||''};
+}
+
+async function savePurchaseEntry(){
+  const msg=byId('h_Msg'),btn=byId('h_SaveBtn');
+  const entry=histEntryFromForm();
+  if(!entry.Supplier){msg.textContent='Pick or type a vendor.';msg.className='modal-msg err';return}
+  if(byId('h_Rate').value.trim()===''){msg.textContent='Enter the purchase rate.';msg.className='modal-msg err';return}
+  const makeCurrent=byId('h_MakeCurrent').checked;
+  btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
+  const r=histEditId
+    ? await post({action:'updatePurchase',id:histEditId,entry:entry,makeCurrent:makeCurrent})
+    : await post({action:'addPurchase',entry:entry,makeCurrent:makeCurrent});
+  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(histEditId){const i=PHIST.findIndex(x=>same(x['Entry ID'],histEditId));if(i>-1)PHIST[i]=Object.assign({},PHIST[i],entry)}
+  else PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
+  if(makeCurrent)applyCurrentLocally(entry);
+  msg.textContent='Saved ✓';msg.className='modal-msg ok';
+  byId('histForm').style.display='none';byId('h_SaveBtn').style.display='none';byId('h_DelBtn').style.display='none';
+  histEditId=null;renderHistory();refreshAll();
+}
+
+function applyCurrentLocally(entry){
+  const i=INV.findIndex(x=>same(x['Item Code'],entry['Item Code']));
+  if(i<0)return;
+  const patch={Supplier:entry.Supplier,'Purchase Rate':entry['Purchase Rate']};
+  if(entry.SKU)patch.SKU=entry.SKU;
+  ['Shipping %','GST %','Handling %'].forEach(k=>{if(!blank(entry[k]))patch[k]=entry[k]});
+  if(entry['Landed Cost'])patch['Total Cost']=entry['Landed Cost'];
+  INV[i]=Object.assign({},INV[i],patch);
+}
+
+async function histMakeCurrent(id){
+  const h=PHIST.find(x=>same(x['Entry ID'],id));if(!h)return;
+  const it=itemByCode(h['Item Code']);
+  if(!confirm('Make '+h.Supplier+' at '+money(h['Purchase Rate'],0)+' the current buying option?\n\n'+
+    'This changes the landed cost and therefore the ElectroBotics price for this module.'))return;
+  const msg=byId('h_Msg');msg.innerHTML='<span class="spinner"></span>Updating…';msg.className='modal-msg saving';
+  const r=await post({action:'updatePurchase',id:id,entry:h,makeCurrent:true});
+  if(!r.ok){msg.textContent='Could not update: '+(r.error||'');msg.className='modal-msg err';return}
+  applyCurrentLocally(h);
+  msg.textContent=h.Supplier+' is now the current buying option ✓';msg.className='modal-msg ok';
+  renderHistory();refreshAll();
+  byId('histSub').innerHTML=`${esc(histItem)} · current: <b>${esc(h.Supplier)}</b> at ${money(h['Purchase Rate'],0)}`;
+}
+
+async function deletePurchaseEntry(){
+  if(!histEditId)return;
+  if(!confirm('Delete this buying option from the history?'))return;
+  const r=await post({action:'deletePurchase',id:histEditId});
+  if(!r.ok){byId('h_Msg').textContent='Could not delete: '+(r.error||'');byId('h_Msg').className='modal-msg err';return}
+  PHIST=PHIST.filter(x=>!same(x['Entry ID'],histEditId));
+  histEditId=null;byId('histForm').style.display='none';
+  byId('h_SaveBtn').style.display='none';byId('h_DelBtn').style.display='none';
+  renderHistory();refreshAll();
+}
+
+/** Compact "who else sells this" line, used in the inventory and purchase tables. */
+function optionsNote(code,limit){
+  const opts=vendorOptions(code),it=itemByCode(code);
+  const others=opts.filter(o=>!same(o.supplier,it&&it.Supplier)).slice(0,limit||2);
+  const note=lastNote(code);
+  let html='';
+  if(others.length)html+='<span class="alt">Also: '+others.map(o=>
+    `${esc(o.supplier)} ${money(o.landed,0)}${o.quote?' (quote)':''}`).join(' · ')+'</span>';
+  if(note)html+=(html?'<br>':'')+`<span class="cmt">“${esc(note.text.length>70?note.text.substring(0,70)+'…':note.text)}”</span>`;
+  return html;
+}
+
 // ─── Stock movement ─────────────────────────────────────────────
 let moveMode='Receipt';
-function openMove(itemCode,centreCode){
+function openMove(itemCode,centreCode,forceMode){
   if(role!=='admin')return;
-  fillSelect('mv_Item','',INV.map(i=>i['Item Code']+' — '+i['Module Name']));
+  byId('mv_ItemHost').innerHTML=pickerHTML('mvItem',itemCode||'','Search module, item code or SKU…','renderMoveBalances');
+  pickerInit('mvItem');
   const locLabels=allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']);
   fillSelect('mv_From','',locLabels);fillSelect('mv_To','',locLabels);
-  if(itemCode)setSelCode('mv_Item',itemCode);
   setSelCode('mv_From',centralCode());
   if(centreCode&&!same(centreCode,centralCode()))setSelCode('mv_To',centreCode);
   else setSelCode('mv_To',(sellingCentres()[0]||{})['Centre Code']||centralCode());
+  if(centreCode&&same(centreCode,centralCode()))setSelCode('mv_To',centreCode);
   byId('mv_Qty').value='';byId('mv_Ref').value='';byId('mv_Note').value='';
   byId('mv_Msg').textContent='';byId('mv_Msg').className='modal-msg';byId('mv_SaveBtn').disabled=false;
-  setMoveMode(centreCode&&!same(centreCode,centralCode())?'Transfer':'Receipt');
+  byId('mv_MakeCurrent').checked=false;
+  mvPrefillPurchase();
+  setMoveMode(forceMode||(centreCode&&!same(centreCode,centralCode())?'Transfer':'Receipt'));
   openModalEl('moveModal');
 }
 function setMoveMode(m){
@@ -2115,10 +2603,39 @@ function setMoveMode(m){
   byId('mv_ToRow').querySelector('label').innerHTML=(m==='Recount')?'Location <span class="req">*</span>':'To <span class="req">*</span>';
   byId('mv_FromRow').querySelector('label').innerHTML=(m==='Issue')?'Location <span class="req">*</span>':'From <span class="req">*</span>';
   byId('mv_QtyLabel').innerHTML=(m==='Recount')?'Counted quantity <span class="req">*</span>':'Quantity <span class="req">*</span>';
+  byId('mv_PurchaseBlock').style.display=(m==='Receipt')?'':'none';
   renderMoveBalances();
 }
+/** Seed the purchase block from the module's current buying option. */
+function mvPrefillPurchase(){
+  const it=itemByCode(pickerValue('mvItem'));
+  buildCombos();
+  setComboValue('mv_Sup',it?(it.Supplier||''):'');
+  byId('mv_SKU').value=it?(it.SKU||''):'';
+  byId('mv_Rate').value=it?num(it['Purchase Rate'])||'':'';
+  const c=it?costOf(it):{shipPc:'',gstPc:'',handlePc:''};
+  byId('mv_Ship').value=it?(c.shipPc||''):'';
+  byId('mv_GST').value=it?(c.gstPc||''):'';
+  byId('mv_Handle').value=it?(c.handlePc||''):'';
+  byId('mv_Cmt').value='';
+  mvPurchasePreview();
+}
+function mvPurchasePreview(){
+  const code=pickerValue('mvItem'),it=itemByCode(code);
+  const c=costOf({'Purchase Rate':byId('mv_Rate').value,'Shipping %':byId('mv_Ship').value,
+    'GST %':byId('mv_GST').value,'Handling %':byId('mv_Handle').value});
+  const cur=it?totalCostOf(it):0;
+  const diff=c.total-cur;
+  const sup=comboValue('mv_Sup');
+  byId('mv_PurchasePreview').innerHTML=!sup?'Add a vendor to log this receipt as a buying option — leave blank to skip.'
+    :`<b>${esc(sup)}</b> at ${money(c.base,0)} → lands at <b>${money(c.total)}</b> per unit`+
+     (it&&cur>0?`<br>Current option lands at ${money(cur)} — this is `+
+       (Math.abs(diff)<0.005?'<b>the same</b>':`<b style="color:${diff<0?'var(--green)':'var(--red)'}">${diff<0?money(-diff)+' cheaper':money(diff)+' dearer'}</b>`):'');
+}
+
 function renderMoveBalances(){
-  const code=selCode('mv_Item');
+  const code=pickerValue('mvItem');
+  if(byId('mv_PurchaseBlock').style.display!=='none')mvPrefillPurchase();
   byId('mv_Balances').innerHTML=code?allLocations().map(c=>{
     const cc=c['Centre Code'],q=qtyAt(code,cc),central=isCentral(c);
     const st=central?'':stateAt(code,cc);
@@ -2129,7 +2646,7 @@ function renderMoveBalances(){
   renderMovePreview();
 }
 function renderMovePreview(){
-  const code=selCode('mv_Item'),qty=num(byId('mv_Qty').value);
+  const code=pickerValue('mvItem'),qty=num(byId('mv_Qty').value);
   const from=selCode('mv_From'),to=selCode('mv_To');
   const p=byId('mv_Preview');
   if(!code){p.innerHTML='Pick a module to see its balances.';return}
@@ -2146,9 +2663,10 @@ function renderMovePreview(){
 }
 async function saveMove(){
   const msg=byId('mv_Msg'),btn=byId('mv_SaveBtn');
-  const code=selCode('mv_Item'),qty=num(byId('mv_Qty').value);
+  const code=pickerValue('mvItem'),qty=num(byId('mv_Qty').value);
   const from=selCode('mv_From'),to=selCode('mv_To');
-  if(!code){msg.textContent='Pick a module.';msg.className='modal-msg err';return}
+  if(!code){msg.textContent='Pick a module from the list.';msg.className='modal-msg err';
+    byId('pk_mvItem_inp').classList.add('invalid');return}
   if(byId('mv_Qty').value.trim()===''||qty<0){msg.textContent='Enter a quantity.';msg.className='modal-msg err';return}
   if(moveMode==='Transfer'){
     if(same(from,to)){msg.textContent='From and To must be different locations.';msg.className='modal-msg err';return}
@@ -2160,9 +2678,25 @@ async function saveMove(){
     from:(moveMode==='Transfer'||moveMode==='Issue')?from:'',
     to:(moveMode==='Transfer'||moveMode==='Receipt'||moveMode==='Recount')?to:'',
     ref:byId('mv_Ref').value.trim(),note:byId('mv_Note').value.trim(),by:(user&&user.email)||''};
+  // A receipt with a vendor also writes the buying option — one action, not two.
+  let entry=null;
+  if(moveMode==='Receipt'&&comboValue('mv_Sup')&&byId('mv_Rate').value.trim()!==''){
+    const c=costOf({'Purchase Rate':byId('mv_Rate').value,'Shipping %':byId('mv_Ship').value,
+      'GST %':byId('mv_GST').value,'Handling %':byId('mv_Handle').value});
+    entry={'Item Code':code,'Date':today(),'Supplier':comboValue('mv_Sup'),'SKU':byId('mv_SKU').value.trim(),
+      'Purchase Rate':byId('mv_Rate').value.trim(),'Shipping %':byId('mv_Ship').value.trim(),
+      'GST %':byId('mv_GST').value.trim(),'Handling %':byId('mv_Handle').value.trim(),
+      'Landed Cost':c.total.toFixed(2),'Qty':String(qty),'Ref':byId('mv_Ref').value.trim(),
+      'Comments':byId('mv_Cmt').value.trim(),'By':(user&&user.email)||''};
+    body.purchase=entry;body.makeCurrent=byId('mv_MakeCurrent').checked;
+  }
   const r=await post(body);
   if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
   applyMoveLocally(body,r.moveId);
+  if(entry){
+    PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
+    if(byId('mv_MakeCurrent').checked)applyCurrentLocally(entry);
+  }
   refreshAll();closeModal('moveModal');
 }
 function setQtyAt(itemCode,centreCode,qty){
@@ -2187,14 +2721,14 @@ function openMins(code){
   minItem=code;
   const it=itemByCode(code);if(!it)return;
   byId('minSub').textContent=code+' · '+it['Module Name']+' · default '+(it['Default Min Qty']||LOW_STOCK_DEFAULT);
-  byId('minRows').innerHTML=sellingCentres().map(c=>{
+  byId('minRows').innerHTML=stockCentres().map(c=>{
     const cc=c['Centre Code'],r=csRow(code,cc);
     return `<div class="min-row" data-centre="${esc(cc)}">
-      <span class="cn">${esc(c['Centre Name'])}</span>
+      <span class="cn">${esc(c['Centre Name'])}${isCentral(c)?'<span class="central-tag">CENTRAL</span>':''}</span>
       <span class="cq">${qtyAt(code,cc)} in stock</span>
       <input type="number" step="1" min="0" class="min-inp" value="${r&&!blank(r['Min Qty'])?num(r['Min Qty']):''}" placeholder="${it['Default Min Qty']||LOW_STOCK_DEFAULT}">
     </div>`;
-  }).join('')||'<div class="tbl-empty">No teaching centres yet.</div>';
+  }).join('')||'<div class="tbl-empty">No locations yet.</div>';
   byId('minAll').value='';
   byId('mn_Msg').textContent='';byId('mn_Msg').className='modal-msg';byId('mn_SaveBtn').disabled=false;
   openModalEl('minModal');
@@ -2230,7 +2764,7 @@ function renderCentreTable(){
         <td style="font-weight:600">${esc(c['Centre Name'])}</td><td>${esc(c.City||'')}</td><td>${esc(c.Incharge||'')}</td>
         <td>${central?'<span class="badge info">Central store</span>':'<span class="badge neutral">Centre</span>'}</td>
         <td class="num">${s.units}</td><td class="num">${money0(s.value)}</td>
-        <td class="num">${central?'—':(s.out+s.low?'<span class="badge '+(s.out?'out':'low')+'">'+(s.out+s.low)+'</span>':'<span class="badge ok">0</span>')}</td>
+        <td class="num">${s.out+s.low?'<span class="badge '+(s.out?'out':'low')+'">'+(s.out+s.low)+'</span>':'<span class="badge ok">0</span>'}</td>
         <td><span class="badge ${isActiveC(c)?'ok':'neutral'}">${esc(c.Status||'Active')}</span></td>
         <td><div class="row-acts">
           <button class="act-btn" onclick="openCentre('${esc(code)}')">View</button>
@@ -2362,27 +2896,26 @@ function openBom(code){
   recalcBom();
   openModalEl('bomModal');
 }
+let bomSeq=0;
 function addBomRow(code,qty){
-  const div=document.createElement('div');div.className='bom-row';
-  div.innerHTML=`<select class="bom-sel" onchange="recalcBom()">
-      <option value="">— select module —</option>
-      ${INV.map(i=>`<option value="${esc(i['Item Code'])}">${esc(i['Item Code'])} · ${esc(i['Module Name'])}</option>`).join('')}
-    </select>
-    <input type="number" class="bom-qty" min="1" step="1" value="${qty?num(qty):1}" oninput="recalcBom()">
-    <span class="bom-stock"></span>
-    <button class="cart-del" onclick="this.parentElement.remove();recalcBom()">&times;</button>`;
+  const pid='bom'+(++bomSeq);
+  const div=document.createElement('div');div.className='bom-row';div.dataset.pid=pid;
+  div.innerHTML=pickerHTML(pid,code||'','Search module…','recalcBom')+
+    `<input type="number" class="bom-qty" min="1" step="1" value="${qty?num(qty):1}" oninput="recalcBom()">
+     <span class="bom-stock"></span>
+     <button class="cart-del" onclick="this.closest('.bom-row').remove();recalcBom()">&times;</button>`;
   byId('bomRows').appendChild(div);
-  if(code)div.querySelector('.bom-sel').value=code;
+  pickerInit(pid);
 }
 function readBomRows(){
   return [...byId('bomRows').querySelectorAll('.bom-row')].map(r=>({
-    code:r.querySelector('.bom-sel').value,qty:num(r.querySelector('.bom-qty').value)||1
+    code:pickerValue(r.dataset.pid),qty:num(r.querySelector('.bom-qty').value)||1
   })).filter(r=>r.code);
 }
 function recalcBom(){
   let cost=0,eb=0,buildable=Infinity;
   [...byId('bomRows').querySelectorAll('.bom-row')].forEach(r=>{
-    const code=r.querySelector('.bom-sel').value,q=num(r.querySelector('.bom-qty').value)||1;
+    const code=pickerValue(r.dataset.pid),q=num(r.querySelector('.bom-qty').value)||1;
     const it=itemByCode(code);const st=r.querySelector('.bom-stock');
     if(!it){st.textContent='';return}
     const have=totalQty(code);
@@ -2473,11 +3006,15 @@ async function deleteOrder(){
 
 
 // ─── Purchase: what to order, grouped by vendor ─────────────────
-// A live calculation, not a stored document. Two independent demands feed it:
-//   • kit orders   — company-wide shortfall against open/ordered kit orders
-//   • centre refill— the part of a centre's gap the central store CANNOT cover
-// They are summed, not max'd: filling a kit order eats the same stock the
-// centres want on their shelves, so a buyer covering both needs both.
+// Gross demand, then subtract stock ONCE. Two demands:
+//   • kit orders — Σ over open/ordered orders of (kits ordered × BOM qty).
+//                  20 kits needing 2 IR sensors each = 40, not "40 minus what
+//                  you happen to hold".
+//   • centre use — Σ of every location's reorder level: the quantity you want
+//                  sitting on shelves once the kits are built.
+// Needed = the two added; Order Qty = Needed − stock in hand, floored at zero.
+// Netting once is the point: building the kits consumes the very stock the
+// centres are meant to keep, so counting it against both overstates cover.
 let poMode='both';   // 'kit' | 'centre' | 'both'
 let poQty={};        // item code → hand-edited order qty
 let poSkip={};       // item code → excluded from this order
@@ -2487,50 +3024,71 @@ function poResetQty(){poQty={};poSkip={};renderPurchase();}
 function poSetQty(code,v){poQty[code]=Math.max(0,Math.round(num(v)));renderPurchase();}
 function poToggle(code){poSkip[code]=!poSkip[code];renderPurchase();}
 
+/** Gross module demand from every open/ordered kit order: order qty × BOM qty. */
+function kitGrossDemand(){
+  const need={};
+  ORDERS.filter(o=>same(o.Status,'Open')||same(o.Status,'Ordered')).forEach(o=>{
+    const n=num(o.Qty);if(n<=0)return;
+    bomFor(o['Kit Code']).forEach(b=>{
+      const code=String(b['Item Code']||'').trim();if(!code)return;
+      need[code]=(need[code]||0)+n*(num(b.Qty)||1);
+    });
+  });
+  return need;
+}
+
 function purchaseList(){
-  const kit={},centre={};
-  requirement().rows.forEach(r=>{if(r.short>0)kit[r.code]=r.short});
-  lowAnalysis().rows.forEach(r=>{if(r.toBuy>0)centre[r.code]=(centre[r.code]||0)+r.toBuy});
-  const codes=uniq(Object.keys(kit).concat(Object.keys(centre)));
+  const kitNeed=kitGrossDemand();
+  const codes=uniq(INV.map(i=>i['Item Code']).concat(Object.keys(kitNeed)));
   const rows=[];
   codes.forEach(code=>{
     const it=itemByCode(code);
-    const k=kit[code]||0,c=centre[code]||0;
-    const suggested=poMode==='kit'?k:poMode==='centre'?c:k+c;
-    if(suggested<=0)return;
+    const forKits=kitNeed[code]||0;              // gross, e.g. 20 kits × 2 = 40
+    const forCentres=it?companyMin(code):0;      // gross: what every location wants to hold
+    const needed=(poMode==='centre'?0:forKits)+(poMode==='kit'?0:forCentres);
+    if(needed<=0)return;
+    const stock=totalQty(code);
+    const suggested=Math.max(needed-stock,0);
     const qty=poQty[code]!==undefined?poQty[code]:suggested;
+    if(suggested<=0&&poQty[code]===undefined)return;   // covered by stock
     const rate=num(it&&it['Purchase Rate']);
     rows.push({code:code,item:it,
       name:it?it['Module Name']:'(not in inventory)',
       sku:it?(it.SKU||''):'',unit:it?(it.Unit||''):'',
       supplier:(it&&it.Supplier)||'Unknown supplier',
-      forKits:k,forCentres:c,suggested:suggested,qty:qty,
-      rate:rate,value:qty*rate,landed:qty*totalCostOf(it),
-      stock:totalQty(code),central:centralQty(code),skip:!!poSkip[code]});
+      forKits:forKits,forCentres:forCentres,needed:needed,
+      stock:stock,central:centralQty(code),suggested:suggested,qty:qty,
+      rate:rate,value:qty*rate,landed:qty*totalCostOf(it),skip:!!poSkip[code]});
   });
+  rows.sort((a,b)=>b.value-a.value||b.suggested-a.suggested);
   const groups={};
   rows.forEach(r=>{(groups[r.supplier]=groups[r.supplier]||[]).push(r)});
   const names=Object.keys(groups).sort((a,b)=>
     groups[b].reduce((s,r)=>s+(r.skip?0:r.value),0)-groups[a].reduce((s,r)=>s+(r.skip?0:r.value),0));
-  return {rows:rows,groups:groups,vendors:names,
-    active:rows.filter(r=>!r.skip&&r.qty>0)};
+  return {rows:rows,groups:groups,vendors:names,active:rows.filter(r=>!r.skip&&r.qty>0)};
 }
 
 function renderPurchase(){
   const p=purchaseList();
-  const kitN=requirement().rows.filter(r=>r.short>0).length;
-  const cenN=uniq(lowAnalysis().rows.filter(r=>r.toBuy>0).map(r=>r.code)).length;
+  const kitNeed=kitGrossDemand();
+  const kitN=Object.keys(kitNeed).length;
+  const cenN=INV.filter(i=>companyMin(i['Item Code'])>totalQty(i['Item Code'])).length;
   byId('poChips').innerHTML=`
     <button class="chip ${poMode==='both'?'active':''}" onclick="setPoMode('both')">Both</button>
     <button class="chip ${poMode==='kit'?'active':''}" onclick="setPoMode('kit')">For kit orders ${kitN}</button>
-    <button class="chip ${poMode==='centre'?'active':''}" onclick="setPoMode('centre')">To refill centres ${cenN}</button>
+    <button class="chip ${poMode==='centre'?'active':''}" onclick="setPoMode('centre')">For centre stock ${cenN}</button>
     <span class="chip-total">${p.vendors.length} vendor${p.vendors.length===1?'':'s'}</span>`;
 
-  byId('poHint').innerHTML=poMode==='kit'
-    ? 'Modules your <b>open kit orders</b> need that total stock can\'t cover.'
-    : poMode==='centre'
-    ? 'Top-ups your centres need that the <b>central store cannot supply</b> — transfers are excluded, so everything here is a genuine purchase.'
-    : 'Kit-order shortfall <b>plus</b> centre top-ups the central store can\'t cover. The two are added because building kits consumes the same stock the centres want on their shelves — adjust any line before you export.';
+  const kitsSummary=ORDERS.filter(o=>same(o.Status,'Open')||same(o.Status,'Ordered'))
+    .map(o=>{const k=kitByCode(o['Kit Code']);return num(o.Qty)+' × '+(k?k['Kit Name']:o['Kit Code'])}).join(', ');
+  byId('poHint').innerHTML=
+    (poMode==='centre'
+      ? '<b>For Centres</b> is the reorder level summed across every location — what you want sitting on shelves.'
+      : poMode==='kit'
+      ? '<b>For Kits</b> is the gross requirement of your open kit orders: kits ordered × qty per kit.'
+      : '<b>For Kits</b> = kits ordered × qty per kit. <b>For Centres</b> = reorder levels summed across every location. '+
+        'They add up to <b>Needed</b>, and stock in hand is subtracted once to give the order quantity.')+
+    (kitsSummary&&poMode!=='centre'?'<br>Open orders: '+esc(kitsSummary):'');
 
   const units=p.active.reduce((s,r)=>s+r.qty,0);
   const value=p.active.reduce((s,r)=>s+r.value,0);
@@ -2542,48 +3100,53 @@ function renderPurchase(){
     : 'Nothing to order right now';
 
   if(p.vendors.length===0){
-    byId('poVendors').innerHTML='<div class="po-empty">Nothing to order — stock covers every open kit order and every centre reorder level. 🎉</div>';
+    byId('poVendors').innerHTML='<div class="po-empty">Nothing to order — stock already covers every open kit order and every reorder level. 🎉</div>';
     return;
   }
 
   byId('poVendors').innerHTML=p.vendors.map(v=>{
     const rows=p.groups[v];
-    const vUnits=rows.filter(r=>!r.skip).reduce((s,r)=>s+r.qty,0);
-    const vValue=rows.filter(r=>!r.skip).reduce((s,r)=>s+r.value,0);
-    const vLanded=rows.filter(r=>!r.skip).reduce((s,r)=>s+r.landed,0);
+    const live=rows.filter(r=>!r.skip);
+    const vUnits=live.reduce((s,r)=>s+r.qty,0);
+    const vValue=live.reduce((s,r)=>s+r.value,0);
+    const vLanded=live.reduce((s,r)=>s+r.landed,0);
     return `<div class="vendor-card">
       <div class="vendor-bar">
         <div>
           <div class="vendor-name">${esc(v)}</div>
-          <div class="vendor-sub">${rows.filter(r=>!r.skip).length} line${rows.filter(r=>!r.skip).length===1?'':'s'} · ${vUnits} units · landed ${money0(vLanded)}</div>
+          <div class="vendor-sub">${live.length} line${live.length===1?'':'s'} · ${vUnits} units · landed ${money0(vLanded)}</div>
         </div>
         <div class="vendor-acts">
           <span class="vendor-total">${money0(vValue)}</span>
-          <button class="act-btn wa" onclick="waVendorOrder('${esc(v).replace(/'/g,"\\\\'")}')">WhatsApp</button>
-          <button class="btn-download" onclick="exportPurchaseVendor('${esc(v).replace(/'/g,"\\\\'")}')">↓ This vendor</button>
+          <button class="act-btn wa" onclick="waVendorOrder('${esc(v).replace(/'/g,"\\'")}')">WhatsApp</button>
+          <button class="btn-download" onclick="exportPurchaseVendor('${esc(v).replace(/'/g,"\\'")}')">↓ This vendor</button>
         </div>
       </div>
       <div class="table-wrap"><table class="data-table">
         <thead><tr><th style="width:34px;"></th><th>Item Code</th><th>Module</th><th>SKU</th>
-          <th class="num">For Kits</th><th class="num">For Centres</th><th class="num">In Stock</th>
-          <th class="num">Order Qty</th><th class="num">Rate</th><th class="num">Value</th></tr></thead>
+          <th class="num">For Kits</th><th class="num">For Centres</th><th class="num">Needed</th>
+          <th class="num">In Stock</th><th class="num">Order Qty</th><th class="num">Rate</th><th class="num">Value</th></tr></thead>
         <tbody>${rows.map(r=>`<tr class="${r.skip?'po-row-off':''}">
           <td><input type="checkbox" class="po-chk" ${r.skip?'':'checked'} onchange="poToggle('${esc(r.code)}')"></td>
           <td class="mono">${esc(r.code)}</td>
           <td><div style="font-weight:600">${esc(r.name)}</div>
             <div style="margin-top:3px;display:flex;gap:5px;flex-wrap:wrap;">
-              ${r.forKits>0?'<span class="po-src kit">kit orders</span>':''}
-              ${r.forCentres>0?'<span class="po-src centre">centre refill</span>':''}
-            </div></td>
+              ${r.forKits>0&&poMode!=='centre'?'<span class="po-src kit">kit orders</span>':''}
+              ${r.forCentres>0&&poMode!=='kit'?'<span class="po-src centre">centre stock</span>':''}
+            </div>
+            ${optionsNote(r.code,2)?`<div class="vendor-note">${optionsNote(r.code,2)}</div>`:''}</td>
           <td class="mono">${esc(r.sku)||'<span style="color:var(--text-light)">—</span>'}</td>
-          <td class="num cost-dim">${r.forKits||'—'}</td>
-          <td class="num cost-dim">${r.forCentres||'—'}</td>
-          <td class="num cost-dim">${r.stock}</td>
+          <td class="num${poMode==='centre'?' cost-dim':''}">${poMode==='centre'?'—':(r.forKits||'—')}</td>
+          <td class="num${poMode==='kit'?' cost-dim':''}">${poMode==='kit'?'—':(r.forCentres||'—')}</td>
+          <td class="num"><b>${r.needed}</b></td>
+          <td class="num cost-dim">−${r.stock}</td>
           <td class="num"><input type="number" min="0" step="1" class="po-qty" value="${r.qty}"
               onchange="poSetQty('${esc(r.code)}',this.value)">
             ${r.qty!==r.suggested?`<div class="qty-min">was ${r.suggested}</div>`:''}</td>
           <td class="num">${r.rate?money(r.rate,0):'<span style="color:var(--red)">no rate</span>'}</td>
-          <td class="num"><b>${money0(r.value)}</b></td></tr>`).join('')}
+          <td class="num"><b>${money0(r.value)}</b>
+            ${role==='admin'?`<div style="margin-top:4px"><button class="act-btn" onclick="openHistory('${esc(r.code)}')">Options</button></div>`:''}
+          </td></tr>`).join('')}
         </tbody></table></div>
     </div>`;
   }).join('');
@@ -2664,13 +3227,12 @@ function refreshAll(){
 let cart=[];          // {code,name,qty,rate}
 let lastCentre='';    // remembered for this session
 
-function sellLocations(){
-  const s=sellingCentres();
-  return s.length?s:allLocations();
-}
+/** Every stock-holding location can sell — the central store included. */
+function sellLocations(){return allLocations()}
 function renderSellCentres(){
   const locs=sellLocations();
   fillSelect('sellCentre','',locs.map(c=>c['Centre Code']+' — '+c['Centre Name']));
+  fillSelect('sellCat','All categories',uniq(INV.map(i=>i.Category)));
   if(lastCentre&&locs.some(c=>same(c['Centre Code'],lastCentre)))setSelCode('sellCentre',lastCentre);
   else if(locs.length)lastCentre=locs[0]['Centre Code'];
   updateSellCentreInfo();
@@ -2693,22 +3255,27 @@ function onSellCentreChange(){
 
 function renderPickList(){
   const centre=sellCentre();
-  const q=(byId('sellSearch').value||'').trim().toLowerCase();
+  const cat=(byId('sellCat')||{}).value||'';
+  const terms=((byId('sellSearch').value||'').trim().toLowerCase()).split(/\s+/).filter(Boolean);
   const rows=INV.filter(i=>{
-    if(!q)return true;
-    return [i['Item Code'],i['Module Name'],i.SKU,i.Supplier,i.Category].join(' ').toLowerCase().includes(q);
+    if(cat&&i.Category!==cat)return false;
+    if(!terms.length)return true;
+    const hay=[i['Item Code'],i['Module Name'],i.SKU,i.Supplier,i.Category].join(' ').toLowerCase();
+    return terms.every(t=>hay.includes(t));
   });
   byId('pickList').innerHTML=rows.length?rows.map(i=>{
     const code=i['Item Code'],here=qtyAt(code,centre),out=here<=0;
     return `<div class="pick-row ${out?'dim':''}" ${out?'':`onclick="addToCart('${esc(code)}')"`}>
       <div class="cart-info">
         <div class="cart-name">${esc(i['Module Name'])}</div>
-        <div class="cart-sub">${esc(code)} · <b>${here} here</b> · ${totalQty(code)} company-wide</div>
+        <div class="cart-sub">${esc(code)}${i.Category?' · '+esc(i.Category):''} · <b>${here} here</b> · ${totalQty(code)} company-wide</div>
       </div>
       <div class="cart-amt">${money0(ebCostOf(i))}</div>
       ${out?'<span class="badge out">None here</span>':'<span class="act-btn primary">Add</span>'}
     </div>`;
   }).join(''):'<div class="cart-empty">No modules match that search.</div>';
+  const n=rows.length,tot=INV.length;
+  if(n<tot&&n>0)byId('pickList').innerHTML+=`<div class="picker-note">${n} of ${tot} modules</div>`;
 }
 
 function addToCart(code){
@@ -3040,10 +3607,13 @@ function poSheetRows(rows){
   return rows.map(r=>({
     'Item Code':r.code,'Module Name':r.name,'SKU':r.sku,'Unit':r.unit,
     'Order Qty':r.qty,'Rate':r.rate,'Value':+r.value.toFixed(2),
-    'For Kit Orders':r.forKits,'For Centre Refill':r.forCentres,
-    'In Stock':r.stock,'At Central Store':r.central,
+    'For Kit Orders':r.forKits,'For Centre Stock':r.forCentres,'Total Needed':r.needed,
+    'In Stock':r.stock,'At Central Store':r.central,'Suggested Qty':r.suggested,
     'Landed Cost / unit':+totalCostOf(r.item).toFixed(2),
-    'Landed Value':+r.landed.toFixed(2)}));
+    'Landed Value':+r.landed.toFixed(2),
+    'Other Vendors':vendorOptions(r.code).filter(o=>!same(o.supplier,r.supplier))
+      .map(o=>o.supplier+' @ '+Math.round(o.landed)+(o.quote?' (quote)':'')).join(' | '),
+    'Latest Note':(lastNote(r.code)||{}).text||''}));
 }
 /** Excel tab names: 31 chars, none of  \ / ? * [ ] :  */
 function safeSheetName(n,used){
@@ -3072,6 +3642,21 @@ function exportPurchaseAll(){
   const all=p.active.map(r=>Object.assign({Supplier:r.supplier},poSheetRows([r])[0]));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(all),safeSheetName('All Vendors',used));
   XLSX.writeFile(wb,'ElectroBotics_PurchaseOrders_'+today()+'.xlsx');
+}
+
+function exportHistory(){
+  const rows=[];
+  (histItem?[histItem]:INV.map(i=>i['Item Code'])).forEach(code=>{
+    const it=itemByCode(code);
+    historyFor(code).forEach(h=>rows.push({
+      'Item Code':code,'Module Name':it?it['Module Name']:'','Date':h.Date,'Supplier':h.Supplier,
+      'SKU':h.SKU||'','Purchase Rate':num(h['Purchase Rate']),'Shipping %':num(h['Shipping %']),
+      'GST %':num(h['GST %']),'Handling %':num(h['Handling %']),'Landed':+entryLanded(h).toFixed(2),
+      'Qty':num(h.Qty)||'','Type':num(h.Qty)?'Purchase':'Quote','Ref':h.Ref||'',
+      'Comments':h.Comments||'','By':h.By||''}));
+  });
+  if(!rows.length){alert('No purchase history logged yet.');return}
+  xlsx(rows,'BuyingOptions','ElectroBotics_BuyingOptions');
 }
 
 // ─── Init ───────────────────────────────────────────────────────
