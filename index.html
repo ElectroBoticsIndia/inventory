@@ -1199,12 +1199,12 @@ const GOOGLE_CLIENT_ID  = '1060454695062-vf1ajfodb8siesq7fk906rpind6fjc72.apps.g
 //   Role 'admin' → everything.   Role 'tutor' → Kits + Centres + Sell + Bills.
 const CURRENCY = '₹';
 const LOW_STOCK_DEFAULT = 5;    // reorder level used when neither the centre nor the item sets one
-const MARGIN_PCT  = 40;         // ElectroBotics Cost = landed cost + this % ON COST
+const MARGIN_PCT  = 40;         // ElectroBotics Cost = total cost + this % ON COST
 const PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 5 = nearest ₹5)
 // ══════════════════════════════════════════════════
 
 // Lowest Code.gs version this build needs. Bump both together.
-const REQUIRED_BACKEND = 4;
+const REQUIRED_BACKEND = 5;
 
 const SHEETS = {inv:'Inventory',kits:'Kits',bom:'KitComponents',centres:'Centres',cstock:'CentreStock',
                 moves:'StockMoves',orders:'Orders',sales:'Sales',items:'SaleItems',
@@ -1247,13 +1247,13 @@ function costOf(it){
           total:base+ship+gst+handle};
 }
 function totalCostOf(it){if(!it)return 0;const t=num(it['Total Cost']);return t>0?t:costOf(it).total}
-/** Selling price from landed cost at the standard margin. */
+/** Selling price from total cost at the standard margin. */
 function autoPrice(cost){
   const p=num(cost)*(1+MARGIN_PCT/100);
   return PRICE_ROUND<=1?Math.round(p):Math.ceil(p/PRICE_ROUND)*PRICE_ROUND;
 }
 /**
- * The price quoted to parents. Computed at MARGIN_PCT on landed cost unless the
+ * The price quoted to parents. Computed at MARGIN_PCT on total cost unless the
  * item is explicitly flagged 'Manual' in the Price Mode column — so a change to
  * a purchase rate reprices the module everywhere, with no re-typing.
  */
@@ -1273,31 +1273,46 @@ function historyFor(code){
   return PHIST.filter(h=>same(h['Item Code'],code))
     .slice().sort((a,b)=>String(b.Date||'').localeCompare(String(a.Date||'')));
 }
-/** Landed cost of one history entry, using ITS OWN percentages — vendors differ. */
-function entryLanded(h){
-  const stored=num(h['Landed Cost']);
+/**
+ * Total Cost of one entry — the same build-up the Inventory sheet uses:
+ * purchase rate + its own shipping % + GST % + handling %. Carried alongside
+ * the rate for reference; vendors are NOT ranked on it.
+ * ('Landed Cost' was the old column name — still read so older rows work.)
+ */
+function entryTotalCost(h){
+  const stored=num(h['Total Cost']||h['Landed Cost']);
   if(stored>0)return stored;
   return costOf({'Purchase Rate':h['Purchase Rate'],'Shipping %':h['Shipping %'],
                  'GST %':h['GST %'],'Handling %':h['Handling %']}).total;
 }
 /**
- * One row per vendor — their most recent price — cheapest landed first.
- * This is the "where else can I buy it" answer.
+ * One row per vendor — their most recent price — CHEAPEST PURCHASE RATE FIRST.
+ * Purchase Rate is the comparison figure throughout; total cost rides along so
+ * heavy freight on a cheap rate is still visible.
  */
 function vendorOptions(code){
   const by={};
   historyFor(code).forEach(h=>{
     const v=String(h.Supplier||'').trim();if(!v)return;
-    if(!by[v])by[v]={supplier:v,entry:h,landed:entryLanded(h),rate:num(h['Purchase Rate']),
+    if(!by[v])by[v]={supplier:v,entry:h,rate:num(h['Purchase Rate']),total:entryTotalCost(h),
                      sku:h.SKU||'',date:h.Date||'',note:h.Comments||'',quote:!num(h.Qty)};
   });
-  return Object.values(by).sort((a,b)=>a.landed-b.landed);
+  return Object.values(by).sort((a,b)=>a.rate-b.rate);
+}
+/** True when the cheapest RATE isn't also cheapest once charges are added. */
+function rateVsTotalConflict(code){
+  const o=vendorOptions(code);
+  if(o.length<2)return null;
+  const byTotal=[...o].sort((a,b)=>a.total-b.total)[0];
+  return same(byTotal.supplier,o[0].supplier)?null:byTotal;
 }
 /** The most recent comment recorded against a module, whatever the vendor. */
 function lastNote(code){
   const h=historyFor(code).find(x=>String(x.Comments||'').trim());
   return h?{text:String(h.Comments).trim(),supplier:h.Supplier||'',date:h.Date||''}:null;
 }
+/** Cheapest purchase rate on record. */
+/** Cheapest purchase rate on record. */
 function cheapestOption(code){const o=vendorOptions(code);return o.length?o[0]:null}
 
 // ─── Locations ──────────────────────────────────────────────────
@@ -1729,7 +1744,7 @@ function openKit(code){
     : '';
   const s=kitStats(code,kdLoc);
   byId('kdStats').innerHTML=`
-    <div class="stat-card accent"><div class="stat-label">Component Cost</div><div class="stat-value">${money0(s.cost)}</div><div class="stat-sub">landed cost, all ${s.count} modules</div></div>
+    <div class="stat-card accent"><div class="stat-label">Component Cost</div><div class="stat-value">${money0(s.cost)}</div><div class="stat-sub">total cost, all ${s.count} modules</div></div>
     <div class="stat-card green"><div class="stat-label">At EB Price</div><div class="stat-value">${money0(s.ebCost)}</div><div class="stat-sub">${s.cost>0?'margin '+money0(s.ebCost-s.cost):'—'}</div></div>
     <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Buildable Now</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">${kdLoc?'at '+esc(centreName(kdLoc)):'company-wide'}</div></div>
     <div class="stat-card amber"><div class="stat-label">Short Modules</div><div class="stat-value">${s.short}</div><div class="stat-sub">not enough for one kit</div></div>`;
@@ -2229,9 +2244,9 @@ function renderInventory(){
           <td class="opt-cell" style="max-width:300px" onclick="openHistory('${esc(i['Item Code'])}')">
             ${(()=>{const o=vendorOptions(i['Item Code']);
               if(!o.length)return '<span class="opt-none">no history yet — click to add</span>';
-              const note=optionsNote(i['Item Code'],2);
+              const note=optionsNote(i['Item Code'],2,o[0].supplier);   // best is already named above
               return `<span class="opt-count">${o.length} vendor${o.length===1?'':'s'}</span>`+
-                `<span class="opt-best">best ${money(o[0].landed,0)} landed · ${esc(o[0].supplier)}</span>`+
+                `<span class="opt-best">best rate ${money(o[0].rate,0)} · ${esc(o[0].supplier)}</span>`+
                 (note?`<div class="vendor-note">${note}</div>`:'')})()}
           </td>
           <td class="mono" style="font-size:11px">${esc(fmtDate(i.Date))}</td>
@@ -2414,8 +2429,9 @@ async function deleteItem(){
 
 // ─── Purchase history / buying options ──────────────────────────
 // The point of this screen: when a vendor is out of stock, who else sells it
-// and at what landed price. Each entry keeps its OWN shipping/GST/handling %,
-// because a "cheaper" rate from a vendor who charges freight often isn't.
+// and at what purchase rate. Ranked on PURCHASE RATE. Each entry also keeps its
+// own shipping/GST/handling %, so Total Cost is shown beside the rate — a cheap
+// rate with heavy freight is still visible without changing the ranking.
 let histItem=null,histEditId=null;
 
 function openHistory(code){
@@ -2425,7 +2441,8 @@ function openHistory(code){
   byId('histTitle').textContent='Buying Options — '+it['Module Name'];
   const cur=cheapestOption(code);
   byId('histSub').innerHTML=`${esc(code)} · current: <b>${esc(it.Supplier||'—')}</b> at ${money(it['Purchase Rate'],0)}`+
-    (cur&&!same(cur.supplier,it.Supplier)?` · cheapest logged: <b>${esc(cur.supplier)}</b> at ${money(cur.landed)} landed`:'');
+    (cur&&!same(cur.supplier,it.Supplier)?` · cheapest rate on record: <b>${esc(cur.supplier)}</b> at ${money(cur.rate,0)}`:'')+
+    `<br><span style="font-size:11px;opacity:.85">Sorted by purchase rate. Total cost = rate + shipping % + GST % + handling %.</span>`;
   byId('histForm').style.display='none';
   byId('h_SaveBtn').style.display='none';
   byId('h_DelBtn').style.display='none';
@@ -2440,8 +2457,12 @@ function renderHistory(){
   const rows=historyFor(code);
   const opts=vendorOptions(code);
   const best=opts.length?opts[0].supplier:'';
-  byId('histList').innerHTML=rows.length?rows.map(h=>{
-    const landed=entryLanded(h),quote=!num(h.Qty);
+  const conflict=rateVsTotalConflict(code);
+  byId('histList').innerHTML=(conflict?
+    `<div class="hint" style="margin-bottom:12px">Cheapest <b>rate</b> is ${esc(opts[0].supplier)} at ${money(opts[0].rate,0)}, but once charges are added `+
+    `<b>${esc(conflict.supplier)}</b> works out cheaper overall (${money(conflict.total)} vs ${money(opts[0].total)} total cost).</div>`:'')+
+    (rows.length?rows.map(h=>{
+    const total=entryTotalCost(h),quote=!num(h.Qty);
     const isBest=same(h.Supplier,best)&&same(h['Entry ID'],(opts[0].entry||{})['Entry ID']);
     return `<div class="hist-row ${isBest?'best':''}">
       <div>
@@ -2451,14 +2472,14 @@ function renderHistory(){
         <div class="hist-meta">${esc(fmtDate(h.Date))}${h.SKU?' · SKU '+esc(h.SKU):''}${num(h.Qty)?' · '+num(h.Qty)+' '+esc(it&&it.Unit||'pcs'):''}${h.Ref?' · '+esc(h.Ref):''}${h.By?' · '+esc(h.By):''}</div>
       </div>
       <div class="hist-price"><span class="r">${money(h['Purchase Rate'],0)}</span>
-        <span class="l">${money(landed)} landed</span></div>
+        <span class="l">${money(total)} total cost</span></div>
       ${h.Comments?`<div class="hist-cmt">${esc(h.Comments)}</div>`:''}
       ${role==='admin'?`<div class="hist-acts">
         <button class="act-btn" onclick="histShowForm('${esc(h['Entry ID'])}')">Edit</button>
         <button class="act-btn primary" onclick="histMakeCurrent('${esc(h['Entry ID'])}')">Use as current</button>
       </div>`:''}
     </div>`;
-  }).join(''):'<div class="hist-empty">No buying options logged yet.'+(role==='admin'?' Add one, or record a vendor when you receive stock.':'')+'</div>';
+  }).join(''):'<div class="hist-empty">No buying options logged yet.'+(role==='admin'?' Add one, or record a vendor when you receive stock.':'')+'</div>');
 }
 
 function histShowForm(id){
@@ -2489,12 +2510,15 @@ function histPreview(){
   const c=costOf({'Purchase Rate':byId('h_Rate').value,'Shipping %':byId('h_Ship').value,
     'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
   const it=itemByCode(histItem);
-  const curLanded=totalCostOf(it);
-  const diff=c.total-curLanded;
-  byId('h_Preview').innerHTML=`Landed <b>${money(c.total)}</b> per unit &nbsp;·&nbsp; `+
-    `rate ${money(c.base,0)} + ${c.shipPc||0}% ship + ${c.gstPc||0}% GST + ${c.handlePc||0}% handling`+
-    (curLanded>0?`<br>Current buying option lands at ${money(curLanded)} — this one is `+
-      (Math.abs(diff)<0.005?'<b>the same</b>':`<b style="color:${diff<0?'var(--green)':'var(--red)'}">${diff<0?money(-diff)+' cheaper':money(diff)+' dearer'}</b>`):'');
+  const curRate=num(it['Purchase Rate']),curTotal=totalCostOf(it);
+  const dRate=c.base-curRate,dTotal=c.total-curTotal;
+  const cmp=(d,what)=>Math.abs(d)<0.005?`<b>same ${what}</b>`
+    :`<b style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?money(-d)+' cheaper':money(d)+' dearer'}</b>`;
+  byId('h_Preview').innerHTML=
+    `Purchase rate <b>${money(c.base,0)}</b>`+
+    (curRate>0?` — vs current ${money(curRate,0)}, ${cmp(dRate,'rate')}`:'')+
+    `<br>Total cost <b>${money(c.total)}</b> &nbsp;<span style="opacity:.8">(+ ${c.shipPc||0}% ship, ${c.gstPc||0}% GST, ${c.handlePc||0}% handling)</span>`+
+    (curTotal>0?` — vs current ${money(curTotal)}, ${cmp(dTotal,'total')}`:'');
 }
 
 function histEntryFromForm(){
@@ -2505,7 +2529,7 @@ function histEntryFromForm(){
     'Supplier':comboValue('h_Sup'),'SKU':byId('h_SKU').value.trim(),
     'Purchase Rate':rate,'Shipping %':byId('h_Ship').value.trim(),
     'GST %':byId('h_GST').value.trim(),'Handling %':byId('h_Handle').value.trim(),
-    'Landed Cost':c.total.toFixed(2),'Qty':byId('h_Qty').value.trim(),
+    'Total Cost':c.total.toFixed(2),'Qty':byId('h_Qty').value.trim(),
     'Ref':byId('h_Ref').value.trim(),'Comments':byId('h_Cmt').value.trim(),
     'By':(user&&user.email)||''};
 }
@@ -2535,7 +2559,8 @@ function applyCurrentLocally(entry){
   const patch={Supplier:entry.Supplier,'Purchase Rate':entry['Purchase Rate']};
   if(entry.SKU)patch.SKU=entry.SKU;
   ['Shipping %','GST %','Handling %'].forEach(k=>{if(!blank(entry[k]))patch[k]=entry[k]});
-  if(entry['Landed Cost'])patch['Total Cost']=entry['Landed Cost'];
+  const tc=entry['Total Cost']||entry['Landed Cost'];
+  if(tc)patch['Total Cost']=tc;
   INV[i]=Object.assign({},INV[i],patch);
 }
 
@@ -2543,7 +2568,7 @@ async function histMakeCurrent(id){
   const h=PHIST.find(x=>same(x['Entry ID'],id));if(!h)return;
   const it=itemByCode(h['Item Code']);
   if(!confirm('Make '+h.Supplier+' at '+money(h['Purchase Rate'],0)+' the current buying option?\n\n'+
-    'This changes the landed cost and therefore the ElectroBotics price for this module.'))return;
+    'This changes the total cost and therefore the ElectroBotics price for this module.'))return;
   const msg=byId('h_Msg');msg.innerHTML='<span class="spinner"></span>Updating…';msg.className='modal-msg saving';
   const r=await post({action:'updatePurchase',id:id,entry:h,makeCurrent:true});
   if(!r.ok){msg.textContent='Could not update: '+(r.error||'');msg.className='modal-msg err';return}
@@ -2565,13 +2590,13 @@ async function deletePurchaseEntry(){
 }
 
 /** Compact "who else sells this" line, used in the inventory and purchase tables. */
-function optionsNote(code,limit){
+function optionsNote(code,limit,exclude){
   const opts=vendorOptions(code),it=itemByCode(code);
-  const others=opts.filter(o=>!same(o.supplier,it&&it.Supplier)).slice(0,limit||2);
+  const others=opts.filter(o=>!same(o.supplier,it&&it.Supplier)&&!same(o.supplier,exclude||'')).slice(0,limit||2);
   const note=lastNote(code);
   let html='';
   if(others.length)html+='<span class="alt">Also: '+others.map(o=>
-    `${esc(o.supplier)} ${money(o.landed,0)}${o.quote?' (quote)':''}`).join(' · ')+'</span>';
+    `${esc(o.supplier)} ${money(o.rate,0)}${o.quote?' (quote)':''}`).join(' · ')+'</span>';
   if(note)html+=(html?'<br>':'')+`<span class="cmt">“${esc(note.text.length>70?note.text.substring(0,70)+'…':note.text)}”</span>`;
   return html;
 }
@@ -2627,10 +2652,13 @@ function mvPurchasePreview(){
   const cur=it?totalCostOf(it):0;
   const diff=c.total-cur;
   const sup=comboValue('mv_Sup');
+  const curRate=it?num(it['Purchase Rate']):0,dRate=c.base-curRate;
+  const cmp=d=>Math.abs(d)<0.005?'<b>the same</b>'
+    :`<b style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?money(-d)+' cheaper':money(d)+' dearer'}</b>`;
   byId('mv_PurchasePreview').innerHTML=!sup?'Add a vendor to log this receipt as a buying option — leave blank to skip.'
-    :`<b>${esc(sup)}</b> at ${money(c.base,0)} → lands at <b>${money(c.total)}</b> per unit`+
-     (it&&cur>0?`<br>Current option lands at ${money(cur)} — this is `+
-       (Math.abs(diff)<0.005?'<b>the same</b>':`<b style="color:${diff<0?'var(--green)':'var(--red)'}">${diff<0?money(-diff)+' cheaper':money(diff)+' dearer'}</b>`):'');
+    :`<b>${esc(sup)}</b> at rate <b>${money(c.base,0)}</b>`+
+     (curRate>0?` — vs current ${money(curRate,0)}, ${cmp(dRate)}`:'')+
+     `<br>Total cost ${money(c.total)}`+(it&&cur>0?` vs current ${money(cur)}, ${cmp(diff)}`:'');
 }
 
 function renderMoveBalances(){
@@ -2686,7 +2714,7 @@ async function saveMove(){
     entry={'Item Code':code,'Date':today(),'Supplier':comboValue('mv_Sup'),'SKU':byId('mv_SKU').value.trim(),
       'Purchase Rate':byId('mv_Rate').value.trim(),'Shipping %':byId('mv_Ship').value.trim(),
       'GST %':byId('mv_GST').value.trim(),'Handling %':byId('mv_Handle').value.trim(),
-      'Landed Cost':c.total.toFixed(2),'Qty':String(qty),'Ref':byId('mv_Ref').value.trim(),
+      'Total Cost':c.total.toFixed(2),'Qty':String(qty),'Ref':byId('mv_Ref').value.trim(),
       'Comments':byId('mv_Cmt').value.trim(),'By':(user&&user.email)||''};
     body.purchase=entry;body.makeCurrent=byId('mv_MakeCurrent').checked;
   }
@@ -2925,7 +2953,7 @@ function recalcBom(){
     buildable=Math.min(buildable,Math.floor(have/q));
   });
   if(buildable===Infinity)buildable=0;
-  byId('bomCost').innerHTML=`<div class="cost-line"><span>Landed component cost / kit</span><span>${money(cost)}</span></div>
+  byId('bomCost').innerHTML=`<div class="cost-line"><span>Total component cost / kit</span><span>${money(cost)}</span></div>
     <div class="cost-line"><span>At ElectroBotics price</span><span>${money(eb)}</span></div>
     <div class="cost-line total"><span>Buildable from total stock</span><span class="v">${buildable} kits</span></div>`;
 }
@@ -3114,7 +3142,7 @@ function renderPurchase(){
       <div class="vendor-bar">
         <div>
           <div class="vendor-name">${esc(v)}</div>
-          <div class="vendor-sub">${live.length} line${live.length===1?'':'s'} · ${vUnits} units · landed ${money0(vLanded)}</div>
+          <div class="vendor-sub">${live.length} line${live.length===1?'':'s'} · ${vUnits} units · ${money0(vLanded)} with charges</div>
         </div>
         <div class="vendor-acts">
           <span class="vendor-total">${money0(vValue)}</span>
@@ -3609,10 +3637,10 @@ function poSheetRows(rows){
     'Order Qty':r.qty,'Rate':r.rate,'Value':+r.value.toFixed(2),
     'For Kit Orders':r.forKits,'For Centre Stock':r.forCentres,'Total Needed':r.needed,
     'In Stock':r.stock,'At Central Store':r.central,'Suggested Qty':r.suggested,
-    'Landed Cost / unit':+totalCostOf(r.item).toFixed(2),
-    'Landed Value':+r.landed.toFixed(2),
+    'Total Cost / unit':+totalCostOf(r.item).toFixed(2),
+    'Total Cost Value':+r.landed.toFixed(2),
     'Other Vendors':vendorOptions(r.code).filter(o=>!same(o.supplier,r.supplier))
-      .map(o=>o.supplier+' @ '+Math.round(o.landed)+(o.quote?' (quote)':'')).join(' | '),
+      .map(o=>o.supplier+' @ '+Math.round(o.rate)+(o.quote?' (quote)':'')).join(' | '),
     'Latest Note':(lastNote(r.code)||{}).text||''}));
 }
 /** Excel tab names: 31 chars, none of  \ / ? * [ ] :  */
@@ -3651,7 +3679,7 @@ function exportHistory(){
     historyFor(code).forEach(h=>rows.push({
       'Item Code':code,'Module Name':it?it['Module Name']:'','Date':h.Date,'Supplier':h.Supplier,
       'SKU':h.SKU||'','Purchase Rate':num(h['Purchase Rate']),'Shipping %':num(h['Shipping %']),
-      'GST %':num(h['GST %']),'Handling %':num(h['Handling %']),'Landed':+entryLanded(h).toFixed(2),
+      'GST %':num(h['GST %']),'Handling %':num(h['Handling %']),'Total Cost':+entryTotalCost(h).toFixed(2),
       'Qty':num(h.Qty)||'','Type':num(h.Qty)?'Purchase':'Quote','Ref':h.Ref||'',
       'Comments':h.Comments||'','By':h.By||''}));
   });
