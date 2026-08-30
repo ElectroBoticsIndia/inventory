@@ -552,7 +552,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="page-sub" id="kitsSub">Component list and cost for every ElectroBotics kit</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <div class="filter-group"><label>Stock shown for</label>
+        <div class="filter-group"><label>Buildable from</label>
           <select id="kitsLocFilter" onchange="renderKits()"></select>
         </div>
         <button class="btn-add" id="kitsAddBtn" onclick="openKitForm()" style="display:none;">+ New Kit</button>
@@ -837,7 +837,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
           <div class="table-actions"><button class="btn-add" onclick="openOrderForm()">+ Add Order</button></div>
         </div>
         <div class="table-filter-bar" style="background:var(--surface-alt);">
-          <div class="hint" style="margin:0;flex:1;">Open orders drive the <b>Module Requirement</b> table on the dashboard — required qty per module = order qty × kit BOM qty, checked against total stock across all locations.</div>
+          <div class="hint" style="margin:0;flex:1;">Open orders drive the <b>Module Requirement</b> table on the dashboard — required qty per module = order qty × kit BOM qty, checked against <b>central store</b> stock.</div>
         </div>
         <div class="table-wrap"><table class="data-table" id="orderTable"></table></div>
       </div>
@@ -1691,8 +1691,13 @@ function toggleCard(bodyId,chevId){
 }
 
 // ─── Kits ───────────────────────────────────────────────────────
-/** loc==='' → company-wide stock; otherwise stock at that one location. */
+/**
+ * Kit availability is measured against the CENTRAL STORE, not company-wide totals:
+ * stock already sitting in a teaching centre is deployed, not available to build
+ * kits from. Pass a location to ask "what could this centre build on its own".
+ */
 function kitStats(kitCode,loc){
+  const src=loc||centralCode();
   const rows=bomFor(kitCode);
   let cost=0,ebCost=0,buildable=Infinity,short=0;
   rows.forEach(r=>{
@@ -1700,7 +1705,7 @@ function kitStats(kitCode,loc){
     if(!it){buildable=0;short++;return}
     cost+=totalCostOf(it)*q;
     ebCost+=ebCostOf(it)*q;
-    const have=loc?qtyAt(it['Item Code'],loc):totalQty(it['Item Code']);
+    const have=qtyAt(it['Item Code'],src);
     if(have<q)short++;
     buildable=Math.min(buildable,Math.floor(have/q));
   });
@@ -1709,10 +1714,11 @@ function kitStats(kitCode,loc){
 }
 
 function renderKits(){
-  fillSelect('kitsLocFilter','All locations (company-wide)',allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']));
-  const loc=String(byId('kitsLocFilter').value||'').split(' — ')[0];
+  fillSelect('kitsLocFilter','',allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']));
+  if(!byId('kitsLocFilter').value)setSelCode('kitsLocFilter',centralCode());
+  const loc=String(byId('kitsLocFilter').value||'').split(' — ')[0]||centralCode();
   const g=byId('kitGrid');
-  byId('kitsSub').textContent=KITS.length+' kits · '+(loc?('stock at '+centreName(loc)):'stock across all locations')+(demoMode?' · demo data':'');
+  byId('kitsSub').textContent=KITS.length+' kits · buildable from '+centreName(loc)+(demoMode?' · demo data':'');
   if(KITS.length===0){g.innerHTML='<div class="tbl-empty">No kits yet.'+(role==='admin'?' Use “+ New Kit” to add one.':'')+'</div>';return}
   g.innerHTML=KITS.map(k=>{
     const s=kitStats(k['Kit Code'],loc);
@@ -1735,10 +1741,10 @@ function renderKits(){
 let kdLoc='';
 function openKit(code){
   currentKit=code;
-  kdLoc=String(byId('kitsLocFilter').value||'').split(' — ')[0];
+  kdLoc=String(byId('kitsLocFilter').value||'').split(' — ')[0]||centralCode();
   const k=kitByCode(code);if(!k)return;
   byId('kdName').textContent=k['Kit Name'];
-  byId('kdSub').textContent=k['Kit Code']+(k.Description?' · '+k.Description:'')+' · stock '+(kdLoc?('at '+centreName(kdLoc)):'across all locations');
+  byId('kdSub').textContent=k['Kit Code']+(k.Description?' · '+k.Description:'')+' · buildable from '+centreName(kdLoc);
   byId('kdActions').innerHTML=role==='admin'
     ? `<button class="act-btn" onclick="openKitForm('${esc(code)}')">Edit kit</button><button class="act-btn primary" onclick="openBom('${esc(code)}')">Edit components</button>`
     : '';
@@ -1746,7 +1752,7 @@ function openKit(code){
   byId('kdStats').innerHTML=`
     <div class="stat-card accent"><div class="stat-label">Component Cost</div><div class="stat-value">${money0(s.cost)}</div><div class="stat-sub">total cost, all ${s.count} modules</div></div>
     <div class="stat-card green"><div class="stat-label">At EB Price</div><div class="stat-value">${money0(s.ebCost)}</div><div class="stat-sub">${s.cost>0?'margin '+money0(s.ebCost-s.cost):'—'}</div></div>
-    <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Buildable Now</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">${kdLoc?'at '+esc(centreName(kdLoc)):'company-wide'}</div></div>
+    <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Buildable Now</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">from ${esc(centreName(kdLoc))} stock</div></div>
     <div class="stat-card amber"><div class="stat-label">Short Modules</div><div class="stat-value">${s.short}</div><div class="stat-sub">not enough for one kit</div></div>`;
 
   const locs=allLocations();
@@ -1759,7 +1765,7 @@ function openKit(code){
       const it=itemByCode(r['Item Code']);const q=num(r.Qty)||1;
       if(!it)return `<tr><td class="mono">${esc(r['Item Code'])}</td><td colspan="${locs.length+5}" style="color:var(--red);">Not found in inventory</td><td><span class="badge out">Missing</span></td></tr>`;
       const uc=totalCostOf(it),code2=it['Item Code'];
-      const have=kdLoc?qtyAt(code2,kdLoc):totalQty(code2);
+      const have=qtyAt(code2,kdLoc);
       return `<tr><td class="mono">${esc(code2)}</td><td>${esc(it['Module Name'])}</td><td class="num">${q}</td>
         ${locs.map(c=>{const cq=qtyAt(code2,c['Centre Code']);
           return `<td class="qty-cell ${cq<q?'out':cq===0?'zero':''}">${cq}</td>`}).join('')}
@@ -2130,7 +2136,7 @@ function requirement(){
   });
   const rows=Object.keys(need).map(code=>{
     const it=itemByCode(code);
-    const required=need[code],stock=totalQty(code);
+    const required=need[code],stock=centralQty(code);   // central store only — centre stock is deployed
     const short=Math.max(required-stock,0);
     const unit=it?totalCostOf(it):0;
     return {code:code,item:it,name:it?it['Module Name']:'(not in inventory)',supplier:it?(it.Supplier||''):'',
@@ -2147,20 +2153,20 @@ function renderRequirement(){
   const totalCost=shortRows.reduce((s,x)=>s+x.shortCost,0);
   byId('reqSummary').textContent=r.orders.length?`${r.orders.reduce((s,o)=>s+num(o.Qty),0)} kits across ${r.orders.length} open orders · ${shortRows.length} modules short · ${money0(totalCost)} to purchase`:'No open kit orders';
   byId('reqOrderLine').innerHTML=r.orders.length
-    ? 'Open orders: '+r.orders.map(o=>{const k=kitByCode(o['Kit Code']);return `<b>${num(o.Qty)} ×</b> ${esc(k?k['Kit Name']:o['Kit Code'])}${o['Required By']?' <span style="opacity:.7">(by '+esc(fmtDate(o['Required By']))+')</span>':''}`}).join(' &nbsp;·&nbsp; ')
+    ? 'Checked against <b>central store</b> stock only — modules already at a centre are deployed, not available to build with.<br>Open orders: '+r.orders.map(o=>{const k=kitByCode(o['Kit Code']);return `<b>${num(o.Qty)} ×</b> ${esc(k?k['Kit Name']:o['Kit Code'])}${o['Required By']?' <span style="opacity:.7">(by '+esc(fmtDate(o['Required By']))+')</span>':''}`}).join(' &nbsp;·&nbsp; ')
     : 'Add a kit order under <b>Kit Orders</b> to see what you need to buy.';
   byId('reqChips').innerHTML=`
     <button class="chip bad ${reqFilter==='short'?'active':''}" onclick="setReqFilter('short')">Short ${shortRows.length}</button>
     <button class="chip ${reqFilter==='all'?'active':''}" onclick="setReqFilter('all')">All required ${r.rows.length}</button>
     <span class="chip-total">Purchase value ${money0(totalCost)}</span>`;
   const rows=reqFilter==='short'?shortRows:r.rows;
-  byId('reqTable').innerHTML=`<thead><tr><th>Item Code</th><th>Module</th><th>Supplier</th><th class="num">Required</th><th class="num">Total Stock</th><th class="num">Central</th><th class="num">Shortfall</th><th class="num">Unit Cost</th><th class="num">Buy Value</th></tr></thead><tbody>`+
+  byId('reqTable').innerHTML=`<thead><tr><th>Item Code</th><th>Module</th><th>Supplier</th><th class="num">Required</th><th class="num">At Central</th><th class="num">Shortfall</th><th class="num">Unit Cost</th><th class="num">Buy Value</th></tr></thead><tbody>`+
     (rows.length?rows.map(x=>`<tr${x.short>0?' style="background:var(--red-light)"':''}>
       <td class="mono">${esc(x.code)}</td><td>${esc(x.name)}</td><td>${esc(x.supplier)}</td>
-      <td class="num">${x.required}</td><td class="num">${x.stock}</td><td class="num">${x.central}</td>
+      <td class="num">${x.required}</td><td class="num">${x.stock}</td>
       <td class="num"><b style="color:${x.short>0?'var(--red)':'var(--green)'}">${x.short}</b></td>
       <td class="num">${x.unit?money(x.unit):'—'}</td><td class="num">${x.short>0?money0(x.shortCost):'—'}</td></tr>`).join('')
-    :'<tr><td colspan="9" class="tbl-empty">Nothing needed — stock covers every open order.</td></tr>')+'</tbody>';
+    :'<tr><td colspan="8" class="tbl-empty">Nothing needed — the central store covers every open order.</td></tr>')+'</tbody>';
 }
 
 // ─── Charts ─────────────────────────────────────────────────────
@@ -2946,8 +2952,8 @@ function recalcBom(){
     const code=pickerValue(r.dataset.pid),q=num(r.querySelector('.bom-qty').value)||1;
     const it=itemByCode(code);const st=r.querySelector('.bom-stock');
     if(!it){st.textContent='';return}
-    const have=totalQty(code);
-    st.textContent=have+' total';
+    const have=centralQty(code);
+    st.textContent=have+' central';
     st.style.color=have>=q?'var(--text-light)':'var(--red)';
     cost+=totalCostOf(it)*q;eb+=ebCostOf(it)*q;
     buildable=Math.min(buildable,Math.floor(have/q));
@@ -2955,7 +2961,7 @@ function recalcBom(){
   if(buildable===Infinity)buildable=0;
   byId('bomCost').innerHTML=`<div class="cost-line"><span>Total component cost / kit</span><span>${money(cost)}</span></div>
     <div class="cost-line"><span>At ElectroBotics price</span><span>${money(eb)}</span></div>
-    <div class="cost-line total"><span>Buildable from total stock</span><span class="v">${buildable} kits</span></div>`;
+    <div class="cost-line total"><span>Buildable from central store</span><span class="v">${buildable} kits</span></div>`;
 }
 async function saveBom(){
   const msg=byId('b_Msg'),btn=byId('b_SaveBtn');
@@ -2978,7 +2984,7 @@ function renderOrders(){
     (ORDERS.length?ORDERS.map(o=>{
       const k=kitByCode(o['Kit Code']);
       let short=0;
-      bomFor(o['Kit Code']).forEach(b=>{const need=num(o.Qty)*(num(b.Qty)||1);if(totalQty(b['Item Code'])<need)short++});
+      bomFor(o['Kit Code']).forEach(b=>{const need=num(o.Qty)*(num(b.Qty)||1);if(centralQty(b['Item Code'])<need)short++});
       const st=String(o.Status||'Open').toLowerCase();
       return `<tr><td class="mono">${esc(o['Order ID'])}</td>
         <td>${k?esc(k['Kit Name']):'<span style="color:var(--red)">'+esc(o['Kit Code'])+' (missing)</span>'}</td>
@@ -3034,15 +3040,17 @@ async function deleteOrder(){
 
 
 // ─── Purchase: what to order, grouped by vendor ─────────────────
-// Gross demand, then subtract stock ONCE. Two demands:
+// Demand, then subtract CENTRAL STORE stock once. Stock already sitting in a
+// teaching centre is deployed — it can't build a kit and it can't refill another
+// centre — so it is deliberately excluded from availability.
 //   • kit orders — Σ over open/ordered orders of (kits ordered × BOM qty).
-//                  20 kits needing 2 IR sensors each = 40, not "40 minus what
-//                  you happen to hold".
-//   • centre use — Σ of every location's reorder level: the quantity you want
-//                  sitting on shelves once the kits are built.
-// Needed = the two added; Order Qty = Needed − stock in hand, floored at zero.
-// Netting once is the point: building the kits consumes the very stock the
-// centres are meant to keep, so counting it against both overstates cover.
+//                  20 kits needing 2 IR sensors each = 40.
+//   • centre top-up — Σ over teaching centres of (reorder level − what they hold),
+//                  i.e. what central still has to send them, plus central's own
+//                  reorder level if you've set one.
+// Needed = the two added; Order Qty = Needed − central store stock, floored at 0.
+// The centre side is a GAP not a gross level: a centre wanting 10 and holding 8
+// needs 2, and its own 8 are counted nowhere else.
 let poMode='both';   // 'kit' | 'centre' | 'both'
 let poQty={};        // item code → hand-edited order qty
 let poSkip={};       // item code → excluded from this order
@@ -3065,17 +3073,21 @@ function kitGrossDemand(){
   return need;
 }
 
+/** What the teaching centres still need from central to reach their levels. */
+function centreTopUp(code){
+  return sellingCentres().reduce((s,c)=>s+Math.max(minAt(code,c['Centre Code'])-qtyAt(code,c['Centre Code']),0),0);
+}
 function purchaseList(){
   const kitNeed=kitGrossDemand();
   const codes=uniq(INV.map(i=>i['Item Code']).concat(Object.keys(kitNeed)));
   const rows=[];
   codes.forEach(code=>{
     const it=itemByCode(code);
-    const forKits=kitNeed[code]||0;              // gross, e.g. 20 kits × 2 = 40
-    const forCentres=it?companyMin(code):0;      // gross: what every location wants to hold
+    const forKits=kitNeed[code]||0;                       // gross, e.g. 20 kits × 2 = 40
+    const forCentres=it?(centreTopUp(code)+minAt(code,centralCode())):0;  // gap + central's own buffer
     const needed=(poMode==='centre'?0:forKits)+(poMode==='kit'?0:forCentres);
     if(needed<=0)return;
-    const stock=totalQty(code);
+    const stock=centralQty(code);                         // central store only
     const suggested=Math.max(needed-stock,0);
     const qty=poQty[code]!==undefined?poQty[code]:suggested;
     if(suggested<=0&&poQty[code]===undefined)return;   // covered by stock
@@ -3085,7 +3097,7 @@ function purchaseList(){
       sku:it?(it.SKU||''):'',unit:it?(it.Unit||''):'',
       supplier:(it&&it.Supplier)||'Unknown supplier',
       forKits:forKits,forCentres:forCentres,needed:needed,
-      stock:stock,central:centralQty(code),suggested:suggested,qty:qty,
+      stock:stock,central:stock,elsewhere:totalQty(code)-stock,suggested:suggested,qty:qty,
       rate:rate,value:qty*rate,landed:qty*totalCostOf(it),skip:!!poSkip[code]});
   });
   rows.sort((a,b)=>b.value-a.value||b.suggested-a.suggested);
@@ -3100,7 +3112,7 @@ function renderPurchase(){
   const p=purchaseList();
   const kitNeed=kitGrossDemand();
   const kitN=Object.keys(kitNeed).length;
-  const cenN=INV.filter(i=>companyMin(i['Item Code'])>totalQty(i['Item Code'])).length;
+  const cenN=INV.filter(i=>(centreTopUp(i['Item Code'])+minAt(i['Item Code'],centralCode()))>centralQty(i['Item Code'])).length;
   byId('poChips').innerHTML=`
     <button class="chip ${poMode==='both'?'active':''}" onclick="setPoMode('both')">Both</button>
     <button class="chip ${poMode==='kit'?'active':''}" onclick="setPoMode('kit')">For kit orders ${kitN}</button>
@@ -3111,11 +3123,12 @@ function renderPurchase(){
     .map(o=>{const k=kitByCode(o['Kit Code']);return num(o.Qty)+' × '+(k?k['Kit Name']:o['Kit Code'])}).join(', ');
   byId('poHint').innerHTML=
     (poMode==='centre'
-      ? '<b>For Centres</b> is the reorder level summed across every location — what you want sitting on shelves.'
+      ? '<b>For Centres</b> is what each centre still needs to reach its reorder level, plus the central store\'s own buffer.'
       : poMode==='kit'
       ? '<b>For Kits</b> is the gross requirement of your open kit orders: kits ordered × qty per kit.'
-      : '<b>For Kits</b> = kits ordered × qty per kit. <b>For Centres</b> = reorder levels summed across every location. '+
-        'They add up to <b>Needed</b>, and stock in hand is subtracted once to give the order quantity.')+
+      : '<b>For Kits</b> = kits ordered × qty per kit. <b>For Centres</b> = what centres still need to reach their reorder levels. '+
+        'They add up to <b>Needed</b>, and only <b>central store</b> stock is subtracted.')+
+    '<br>Stock already at a teaching centre is <b>not</b> counted as available — it is deployed, not on the shelf to build or send from.'+
     (kitsSummary&&poMode!=='centre'?'<br>Open orders: '+esc(kitsSummary):'');
 
   const units=p.active.reduce((s,r)=>s+r.qty,0);
@@ -3153,7 +3166,7 @@ function renderPurchase(){
       <div class="table-wrap"><table class="data-table">
         <thead><tr><th style="width:34px;"></th><th>Item Code</th><th>Module</th><th>SKU</th>
           <th class="num">For Kits</th><th class="num">For Centres</th><th class="num">Needed</th>
-          <th class="num">In Stock</th><th class="num">Order Qty</th><th class="num">Rate</th><th class="num">Value</th></tr></thead>
+          <th class="num">At Central</th><th class="num">Order Qty</th><th class="num">Rate</th><th class="num">Value</th></tr></thead>
         <tbody>${rows.map(r=>`<tr class="${r.skip?'po-row-off':''}">
           <td><input type="checkbox" class="po-chk" ${r.skip?'':'checked'} onchange="poToggle('${esc(r.code)}')"></td>
           <td class="mono">${esc(r.code)}</td>
@@ -3167,7 +3180,7 @@ function renderPurchase(){
           <td class="num${poMode==='centre'?' cost-dim':''}">${poMode==='centre'?'—':(r.forKits||'—')}</td>
           <td class="num${poMode==='kit'?' cost-dim':''}">${poMode==='kit'?'—':(r.forCentres||'—')}</td>
           <td class="num"><b>${r.needed}</b></td>
-          <td class="num cost-dim">−${r.stock}</td>
+          <td class="num cost-dim">−${r.stock}${r.elsewhere>0?`<span class="qty-min">${r.elsewhere} at centres, not counted</span>`:''}</td>
           <td class="num"><input type="number" min="0" step="1" class="po-qty" value="${r.qty}"
               onchange="poSetQty('${esc(r.code)}',this.value)">
             ${r.qty!==r.suggested?`<div class="qty-min">was ${r.suggested}</div>`:''}</td>
@@ -3596,7 +3609,8 @@ function exportKitBom(){
     const it=itemByCode(b['Item Code'])||{};
     const row={Kit:k['Kit Name'],'Item Code':b['Item Code'],'Module Name':it['Module Name']||'','Qty per Kit':num(b.Qty)};
     locs.forEach(l=>{row[l['Centre Name']]=qtyAt(b['Item Code'],l['Centre Code'])});
-    row['Total Stock']=totalQty(b['Item Code']);
+    row['At Central Store']=centralQty(b['Item Code']);
+    row['Total (all locations)']=totalQty(b['Item Code']);
     row['Unit Cost']=+totalCostOf(it).toFixed(2);
     row['Line Cost']=+(totalCostOf(it)*num(b.Qty)).toFixed(2);
     row['EB Cost']=ebCostOf(it);
@@ -3606,7 +3620,7 @@ function exportKitBom(){
 function exportShortfall(){
   const r=requirement();
   xlsx(r.rows.map(x=>({'Item Code':x.code,'Module Name':x.name,Supplier:x.supplier,Required:x.required,
-    'Total Stock':x.stock,'Central Store':x.central,'To Buy':x.short,'Unit Cost':+x.unit.toFixed(2),
+    'At Central Store':x.stock,'To Buy':x.short,'Unit Cost':+x.unit.toFixed(2),
     'Buy Value':+x.shortCost.toFixed(2)})),'Purchase','ElectroBotics_KitOrderPurchase');
 }
 function exportMoves(){
@@ -3635,8 +3649,8 @@ function poSheetRows(rows){
   return rows.map(r=>({
     'Item Code':r.code,'Module Name':r.name,'SKU':r.sku,'Unit':r.unit,
     'Order Qty':r.qty,'Rate':r.rate,'Value':+r.value.toFixed(2),
-    'For Kit Orders':r.forKits,'For Centre Stock':r.forCentres,'Total Needed':r.needed,
-    'In Stock':r.stock,'At Central Store':r.central,'Suggested Qty':r.suggested,
+    'For Kit Orders':r.forKits,'For Centre Top-up':r.forCentres,'Total Needed':r.needed,
+    'At Central Store':r.stock,'At Centres (not counted)':r.elsewhere,'Suggested Qty':r.suggested,
     'Total Cost / unit':+totalCostOf(r.item).toFixed(2),
     'Total Cost Value':+r.landed.toFixed(2),
     'Other Vendors':vendorOptions(r.code).filter(o=>!same(o.supplier,r.supplier))
