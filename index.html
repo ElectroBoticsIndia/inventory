@@ -155,6 +155,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .act-btn.primary:hover{background:var(--accent-dark);color:#fff}
 .act-btn.danger{color:var(--red);border-color:#f0c9be}
 .act-btn.danger:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.act-btn.pay{color:#0a7d4a;border-color:#bfe3d0;background:#f2fbf6}
+.act-btn.pay:hover{background:#0a7d4a;color:#fff;border-color:#0a7d4a}
 .act-btn.wa{color:#128c4b;border-color:#cde8d8;display:inline-flex;align-items:center;justify-content:center;gap:5px}
 .act-btn.wa:hover{background:#25d366;color:#fff;border-color:#25d366}
 .act-btn:disabled{opacity:.55;cursor:wait}
@@ -1166,8 +1168,31 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     <div class="modal-body" id="billBody"></div>
     <div class="modal-foot">
       <button class="act-btn wa" onclick="waBillAgain()">Send on WhatsApp</button>
+      <button class="act-btn" id="billPayBtn" onclick="openPayFromBill()">Update payment</button>
       <div class="spacer"></div>
       <button class="btn-cancel" onclick="closeModal('billModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment status -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal-card" style="max-width:460px">
+    <div class="modal-head"><h3 id="payModalTitle">Payment</h3><button class="modal-close" onclick="closeModal('payModal')">&times;</button></div>
+    <div class="modal-body">
+      <div class="modal-sub" id="paySub"></div>
+      <div class="form-row"><label>Status</label>
+        <select id="payStatus" onchange="payToggle()"><option value="Paid">Paid</option><option value="Pending">Pending</option></select></div>
+      <div class="form-row"><label>Method</label>
+        <select id="payMethod"><option value="">—</option><option>UPI</option><option>Cash</option><option>Bank Transfer</option><option>Other</option></select></div>
+      <div class="form-row" id="payDateRow"><label>Paid on</label><input type="date" id="payDate"></div>
+      <div class="form-row"><label>Notes</label><input type="text" id="payNotes" placeholder="Reference no., who collected it, part payment…"></div>
+      <div class="modal-msg" id="payMsg"></div>
+    </div>
+    <div class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn-cancel" onclick="closeModal('payModal')">Cancel</button>
+      <button class="btn-save" id="paySaveBtn" onclick="savePayment()">Save</button>
     </div>
   </div>
 </div>
@@ -1204,7 +1229,7 @@ const PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 
 // ══════════════════════════════════════════════════
 
 // Lowest Code.gs version this build needs. Bump both together.
-const REQUIRED_BACKEND = 5;
+const REQUIRED_BACKEND = 6;
 
 const SHEETS = {inv:'Inventory',kits:'Kits',bom:'KitComponents',centres:'Centres',cstock:'CentreStock',
                 moves:'StockMoves',orders:'Orders',sales:'Sales',items:'SaleItems',
@@ -3459,6 +3484,7 @@ function billsHtml(rows,showSeller){
         <td><span class="badge ${paid?'ok':'low'}">${esc(s['Payment Status']||'Pending')}</span>${s.Method?' <span class="mono" style="font-size:10px;color:var(--text-light)">'+esc(s.Method)+'</span>':''}</td>
         ${showSeller?'<td class="mono" style="font-size:11px">'+esc(s['Sold By']||'')+'</td>':''}
         <td><div class="row-acts"><button class="act-btn" onclick="openBill('${esc(s['Bill No'])}')">View</button>
+          ${canEditPayment(s)?`<button class="act-btn ${paid?'':'pay'}" onclick="openPay('${esc(s['Bill No'])}')">${paid?'Payment':'Mark Paid'}</button>`:''}
           <button class="act-btn wa" onclick="waBillFor('${esc(s['Bill No'])}')">WhatsApp</button></div></td></tr>`;
     }).join(''):`<tr><td colspan="${showSeller?9:8}" class="tbl-empty">No bills yet.</td></tr>`)+'</tbody>';
 }
@@ -3473,14 +3499,72 @@ function openBill(no){
       <td class="num">${num(i.Qty)}</td><td class="num">${money0(i.Rate)}</td><td class="num">${money0(i.Amount)}</td></tr>`).join('')}
     </tbody></table>
     <div class="cart-total"><span class="lbl">Total</span><span class="val">${money0(s.Total)}</span></div>
-    <div class="hint" style="margin-top:14px;">Payment: <b>${esc(s['Payment Status']||'')}</b>${s.Method?' · '+esc(s.Method):''}${s['Sold By']?'<br>Sold by '+esc(s['Sold By']):''}${s.Notes?'<br>'+esc(s.Notes):''}</div>`;
+    <div class="hint" style="margin-top:14px;">Payment: <b>${esc(s['Payment Status']||'Pending')}</b>${s.Method?' · '+esc(s.Method):''}${s['Paid On']?' · paid on '+esc(fmtDate(s['Paid On'])):''}${s['Paid By']?' · marked by '+esc(s['Paid By']):''}${s['Sold By']?'<br>Sold by '+esc(s['Sold By']):''}${s.Notes?'<br>'+esc(s.Notes):''}</div>`;
+  const pb=byId('billPayBtn');
+  if(pb){
+    const editable=canEditPayment(s);
+    pb.style.display=editable?'':'none';
+    pb.textContent=same(s['Payment Status'],'Paid')?'Update payment':'Mark Paid';
+    pb.className='act-btn'+(same(s['Payment Status'],'Paid')?'':' pay');
+  }
   openModalEl('billModal');
 }
+function openPayFromBill(){if(waBill){const b=waBill;closeModal('billModal');openPay(b)}}
 function waBillFor(no){
   const s=SALES.find(x=>same(x['Bill No'],no));if(!s)return;
   openWa('Bill '+no,billText(s,SALEITEMS.filter(i=>same(i['Bill No'],no))),s.Contact);
 }
 function waBillAgain(){if(waBill){closeModal('billModal');waBillFor(waBill)}}
+
+// ─── Payment status ─────────────────────────────────────────────
+// A bill is written once when the sale happens; money often arrives later.
+// This edits ONLY the payment fields — stock and line items are never touched.
+let payBill=null;
+function canEditPayment(s){
+  if(!s)return false;
+  if(role==='admin')return true;
+  return String(s['Sold By']||'').toLowerCase()===((user&&user.email)||'').toLowerCase();
+}
+function payToggle(){
+  const paid=byId('payStatus').value==='Paid';
+  byId('payDateRow').style.display=paid?'':'none';
+  byId('payMethod').parentElement.style.display=paid?'':'none';
+}
+function openPay(no){
+  const s=SALES.find(x=>same(x['Bill No'],no));if(!s)return;
+  if(!canEditPayment(s)){alert('Only the tutor who raised this bill, or an admin, can change its payment.');return}
+  payBill=no;
+  const paid=same(s['Payment Status'],'Paid');
+  byId('payModalTitle').textContent=paid?'Payment · '+s['Bill No']:'Mark Paid · '+s['Bill No'];
+  byId('paySub').innerHTML=esc(s.Customer)+' · '+esc(centreName(s.Centre))+' · billed '+esc(fmtDate(s.Date))+' · <b>'+money0(s.Total)+'</b>';
+  byId('payStatus').value=paid?'Paid':'Paid';          // default action is to collect
+  byId('payMethod').value=s.Method||'';
+  byId('payDate').value=(s['Paid On']&&String(s['Paid On']).slice(0,10))||today();
+  byId('payNotes').value=s.Notes||'';
+  byId('payMsg').textContent='';byId('payMsg').className='modal-msg';
+  payToggle();
+  openModalEl('payModal');
+}
+async function savePayment(){
+  const s=SALES.find(x=>same(x['Bill No'],payBill));if(!s)return;
+  const msg=byId('payMsg'),btn=byId('paySaveBtn');
+  const status=byId('payStatus').value;
+  const patch={'Payment Status':status,
+    Method:status==='Paid'?byId('payMethod').value:'',
+    'Paid On':status==='Paid'?byId('payDate').value:'',
+    'Paid By':status==='Paid'?((user&&user.email)||''):'',
+    Notes:byId('payNotes').value.trim()};
+  if(status==='Paid'&&!patch['Paid On']){msg.textContent='Pick the date the money came in.';msg.className='modal-msg err';return}
+  btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
+  const r=await post({action:'updateSalePayment',billNo:s['Bill No'],patch:patch});
+  btn.disabled=false;
+  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';return}
+  Object.keys(patch).forEach(k=>{s[k]=patch[k]});
+  msg.textContent=status==='Paid'?('Bill '+s['Bill No']+' marked Paid ✓'):('Bill '+s['Bill No']+' moved back to Pending.');
+  msg.className='modal-msg ok';
+  refreshAll();
+  setTimeout(()=>closeModal('payModal'),700);
+}
 
 // ─── WhatsApp messages ──────────────────────────────────────────
 function waLowStock(){
@@ -3640,7 +3724,7 @@ function exportBills(){
     SALEITEMS.filter(i=>same(i['Bill No'],s['Bill No'])).forEach(i=>{
       rows.push({'Bill No':s['Bill No'],Date:s.Date,Centre:centreName(s.Centre),Customer:s.Customer,Contact:s.Contact||'',
         'Item Code':i['Item Code'],'Module Name':i['Module Name'],Qty:num(i.Qty),Rate:num(i.Rate),Amount:num(i.Amount),
-        'Bill Total':num(s.Total),'Payment Status':s['Payment Status']||'',Method:s.Method||'','Sold By':s['Sold By']||''});
+        'Bill Total':num(s.Total),'Payment Status':s['Payment Status']||'',Method:s.Method||'','Paid On':s['Paid On']||'','Sold By':s['Sold By']||''});
     });
   });
   xlsx(rows,'Sales','ElectroBotics_Sales');
