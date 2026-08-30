@@ -386,6 +386,38 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .manual-toggle{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;
   color:var(--text-dim);cursor:pointer;user-select:none;margin-top:7px}
 .manual-toggle input{width:auto;margin:0}
+/* ─── Purchase / vendor order blocks ─── */
+.po-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.po-totals{display:flex;gap:22px;flex-wrap:wrap}
+.po-tot{text-align:right}
+.po-tot .n{font-family:var(--font-mono);font-size:20px;font-weight:700;color:var(--text)}
+.po-tot .n.accent{color:var(--accent)}
+.po-tot .l{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-light)}
+.vendor-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.vendor-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:15px 20px;background:var(--surface-alt);border-bottom:1px solid var(--border)}
+.vendor-name{font-size:16px;font-weight:700;color:var(--text)}
+.vendor-sub{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:2px}
+.vendor-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vendor-total{font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--accent-dark);
+  background:var(--accent-light);border-radius:9px;padding:6px 13px;white-space:nowrap}
+.po-qty{width:66px;font-family:var(--font-mono);font-size:13px;font-weight:700;padding:6px;
+  border:1px solid var(--accent);border-radius:7px;text-align:center;outline:none;background:var(--accent-light);color:var(--accent-dark)}
+.po-qty:focus{background:#fff}
+.po-chk{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.po-row-off{opacity:.4}
+.po-src{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.po-src.kit{background:var(--amber-bg);color:#9a7200}
+.po-src.centre{background:var(--accent-light);color:var(--accent-dark)}
+.po-empty{padding:44px 20px;text-align:center;font-family:var(--font-mono);font-size:13px;color:var(--text-light);
+  background:var(--surface);border:1px dashed var(--border);border-radius:var(--radius)}
+@media(max-width:600px){
+  .po-totals{gap:14px;width:100%}
+  .vendor-bar{flex-direction:column;align-items:stretch}
+  .vendor-acts{width:100%}
+  .vendor-acts .act-btn,.vendor-acts .btn-download{flex:1;justify-content:center;text-align:center}
+}
 </style>
 </head>
 <body>
@@ -612,6 +644,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
       <button class="dash-tab" data-tab="kits" onclick="setTab('kits')">Kits &amp; BOM</button>
       <button class="dash-tab" data-tab="centres" onclick="setTab('centres')">Centres</button>
       <button class="dash-tab" data-tab="orders" onclick="setTab('orders')">Kit Orders</button>
+      <button class="dash-tab" data-tab="purchase" onclick="setTab('purchase')">Purchase</button>
       <button class="dash-tab" data-tab="moves" onclick="setTab('moves')">Stock Log</button>
       <button class="dash-tab" data-tab="sales" onclick="setTab('sales')">Sales</button>
     </div>
@@ -741,6 +774,28 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         </div>
         <div class="table-wrap"><table class="data-table" id="orderTable"></table></div>
       </div>
+    </div>
+
+    <!-- Purchase -->
+    <div class="dash-panel" id="panel-purchase">
+      <div class="po-head">
+        <div>
+          <div class="page-title" style="font-size:19px;">What to Order</div>
+          <div class="page-sub" id="poSub"></div>
+        </div>
+        <div class="po-totals">
+          <div class="po-tot"><div class="n" id="poLines">0</div><div class="l">lines</div></div>
+          <div class="po-tot"><div class="n" id="poUnits">0</div><div class="l">units</div></div>
+          <div class="po-tot"><div class="n accent" id="poValue">₹0</div><div class="l">vendor value</div></div>
+        </div>
+      </div>
+      <div class="chip-row" id="poChips"></div>
+      <div class="hint" id="poHint"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+        <button class="act-btn" onclick="poResetQty()">Reset quantities</button>
+        <button class="btn-download" onclick="exportPurchaseAll()">↓ All vendors (one sheet each)</button>
+      </div>
+      <div id="poVendors"></div>
     </div>
 
     <!-- Stock log -->
@@ -1504,7 +1559,7 @@ function openKit(code){
   const rows=bomFor(code);
   byId('kdTable').innerHTML=`<thead><tr>
       <th>Item Code</th><th>Module</th><th class="num">Qty / Kit</th>
-      ${locs.map(c=>`<th class="num">${esc(c['Centre Code'])}</th>`).join('')}
+      ${locs.map(c=>`<th class="num" title="${esc(c['Centre Code'])}">${esc(c['Centre Name'])}</th>`).join('')}
       <th class="num">Total</th><th class="num">Unit Cost</th><th class="num">Line Cost</th><th>Status</th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>{
       const it=itemByCode(r['Item Code']);const q=num(r.Qty)||1;
@@ -1674,7 +1729,7 @@ function setTab(tab){
 }
 function renderAdmin(){
   buildCombos();renderStats();renderLow();renderRequirement();renderInventory();
-  renderKitTable();renderCentreTable();renderOrders();renderMoves();renderSalesTable();
+  renderKitTable();renderCentreTable();renderOrders();renderPurchase();renderMoves();renderSalesTable();
   setTimeout(buildCharts,30);
 }
 
@@ -1870,7 +1925,7 @@ function renderInventory(){
   const locs=allLocations();
   byId('invTable').innerHTML=`<thead><tr>
       <th>Item Code</th><th>Module</th><th>Supplier</th>
-      ${locs.map(c=>`<th class="num" title="${esc(c['Centre Name'])}">${esc(isCentral(c)?'Central':c['Centre Code'])}</th>`).join('')}
+      ${locs.map(c=>`<th class="num" title="${esc(c['Centre Code'])}">${esc(c['Centre Name'])}</th>`).join('')}
       <th class="num">Total</th><th class="num">Level</th><th>Status</th><th class="price-cell">EB Cost</th><th></th>
     </tr></thead><tbody>`+
     (invRows.length?invRows.map(i=>{
@@ -2416,6 +2471,145 @@ async function deleteOrder(){
   refreshAll();closeModal('orderModal');
 }
 
+
+// ─── Purchase: what to order, grouped by vendor ─────────────────
+// A live calculation, not a stored document. Two independent demands feed it:
+//   • kit orders   — company-wide shortfall against open/ordered kit orders
+//   • centre refill— the part of a centre's gap the central store CANNOT cover
+// They are summed, not max'd: filling a kit order eats the same stock the
+// centres want on their shelves, so a buyer covering both needs both.
+let poMode='both';   // 'kit' | 'centre' | 'both'
+let poQty={};        // item code → hand-edited order qty
+let poSkip={};       // item code → excluded from this order
+
+function setPoMode(m){poMode=m;renderPurchase();}
+function poResetQty(){poQty={};poSkip={};renderPurchase();}
+function poSetQty(code,v){poQty[code]=Math.max(0,Math.round(num(v)));renderPurchase();}
+function poToggle(code){poSkip[code]=!poSkip[code];renderPurchase();}
+
+function purchaseList(){
+  const kit={},centre={};
+  requirement().rows.forEach(r=>{if(r.short>0)kit[r.code]=r.short});
+  lowAnalysis().rows.forEach(r=>{if(r.toBuy>0)centre[r.code]=(centre[r.code]||0)+r.toBuy});
+  const codes=uniq(Object.keys(kit).concat(Object.keys(centre)));
+  const rows=[];
+  codes.forEach(code=>{
+    const it=itemByCode(code);
+    const k=kit[code]||0,c=centre[code]||0;
+    const suggested=poMode==='kit'?k:poMode==='centre'?c:k+c;
+    if(suggested<=0)return;
+    const qty=poQty[code]!==undefined?poQty[code]:suggested;
+    const rate=num(it&&it['Purchase Rate']);
+    rows.push({code:code,item:it,
+      name:it?it['Module Name']:'(not in inventory)',
+      sku:it?(it.SKU||''):'',unit:it?(it.Unit||''):'',
+      supplier:(it&&it.Supplier)||'Unknown supplier',
+      forKits:k,forCentres:c,suggested:suggested,qty:qty,
+      rate:rate,value:qty*rate,landed:qty*totalCostOf(it),
+      stock:totalQty(code),central:centralQty(code),skip:!!poSkip[code]});
+  });
+  const groups={};
+  rows.forEach(r=>{(groups[r.supplier]=groups[r.supplier]||[]).push(r)});
+  const names=Object.keys(groups).sort((a,b)=>
+    groups[b].reduce((s,r)=>s+(r.skip?0:r.value),0)-groups[a].reduce((s,r)=>s+(r.skip?0:r.value),0));
+  return {rows:rows,groups:groups,vendors:names,
+    active:rows.filter(r=>!r.skip&&r.qty>0)};
+}
+
+function renderPurchase(){
+  const p=purchaseList();
+  const kitN=requirement().rows.filter(r=>r.short>0).length;
+  const cenN=uniq(lowAnalysis().rows.filter(r=>r.toBuy>0).map(r=>r.code)).length;
+  byId('poChips').innerHTML=`
+    <button class="chip ${poMode==='both'?'active':''}" onclick="setPoMode('both')">Both</button>
+    <button class="chip ${poMode==='kit'?'active':''}" onclick="setPoMode('kit')">For kit orders ${kitN}</button>
+    <button class="chip ${poMode==='centre'?'active':''}" onclick="setPoMode('centre')">To refill centres ${cenN}</button>
+    <span class="chip-total">${p.vendors.length} vendor${p.vendors.length===1?'':'s'}</span>`;
+
+  byId('poHint').innerHTML=poMode==='kit'
+    ? 'Modules your <b>open kit orders</b> need that total stock can\'t cover.'
+    : poMode==='centre'
+    ? 'Top-ups your centres need that the <b>central store cannot supply</b> — transfers are excluded, so everything here is a genuine purchase.'
+    : 'Kit-order shortfall <b>plus</b> centre top-ups the central store can\'t cover. The two are added because building kits consumes the same stock the centres want on their shelves — adjust any line before you export.';
+
+  const units=p.active.reduce((s,r)=>s+r.qty,0);
+  const value=p.active.reduce((s,r)=>s+r.value,0);
+  byId('poLines').textContent=p.active.length;
+  byId('poUnits').textContent=units;
+  byId('poValue').textContent=money0(value);
+  byId('poSub').textContent=p.active.length
+    ? 'Grouped by vendor · rates are each supplier\'s current purchase rate'
+    : 'Nothing to order right now';
+
+  if(p.vendors.length===0){
+    byId('poVendors').innerHTML='<div class="po-empty">Nothing to order — stock covers every open kit order and every centre reorder level. 🎉</div>';
+    return;
+  }
+
+  byId('poVendors').innerHTML=p.vendors.map(v=>{
+    const rows=p.groups[v];
+    const vUnits=rows.filter(r=>!r.skip).reduce((s,r)=>s+r.qty,0);
+    const vValue=rows.filter(r=>!r.skip).reduce((s,r)=>s+r.value,0);
+    const vLanded=rows.filter(r=>!r.skip).reduce((s,r)=>s+r.landed,0);
+    return `<div class="vendor-card">
+      <div class="vendor-bar">
+        <div>
+          <div class="vendor-name">${esc(v)}</div>
+          <div class="vendor-sub">${rows.filter(r=>!r.skip).length} line${rows.filter(r=>!r.skip).length===1?'':'s'} · ${vUnits} units · landed ${money0(vLanded)}</div>
+        </div>
+        <div class="vendor-acts">
+          <span class="vendor-total">${money0(vValue)}</span>
+          <button class="act-btn wa" onclick="waVendorOrder('${esc(v).replace(/'/g,"\\\\'")}')">WhatsApp</button>
+          <button class="btn-download" onclick="exportPurchaseVendor('${esc(v).replace(/'/g,"\\\\'")}')">↓ This vendor</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th style="width:34px;"></th><th>Item Code</th><th>Module</th><th>SKU</th>
+          <th class="num">For Kits</th><th class="num">For Centres</th><th class="num">In Stock</th>
+          <th class="num">Order Qty</th><th class="num">Rate</th><th class="num">Value</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr class="${r.skip?'po-row-off':''}">
+          <td><input type="checkbox" class="po-chk" ${r.skip?'':'checked'} onchange="poToggle('${esc(r.code)}')"></td>
+          <td class="mono">${esc(r.code)}</td>
+          <td><div style="font-weight:600">${esc(r.name)}</div>
+            <div style="margin-top:3px;display:flex;gap:5px;flex-wrap:wrap;">
+              ${r.forKits>0?'<span class="po-src kit">kit orders</span>':''}
+              ${r.forCentres>0?'<span class="po-src centre">centre refill</span>':''}
+            </div></td>
+          <td class="mono">${esc(r.sku)||'<span style="color:var(--text-light)">—</span>'}</td>
+          <td class="num cost-dim">${r.forKits||'—'}</td>
+          <td class="num cost-dim">${r.forCentres||'—'}</td>
+          <td class="num cost-dim">${r.stock}</td>
+          <td class="num"><input type="number" min="0" step="1" class="po-qty" value="${r.qty}"
+              onchange="poSetQty('${esc(r.code)}',this.value)">
+            ${r.qty!==r.suggested?`<div class="qty-min">was ${r.suggested}</div>`:''}</td>
+          <td class="num">${r.rate?money(r.rate,0):'<span style="color:var(--red)">no rate</span>'}</td>
+          <td class="num"><b>${money0(r.value)}</b></td></tr>`).join('')}
+        </tbody></table></div>
+    </div>`;
+  }).join('');
+}
+
+function poVendorRows(v){
+  const p=purchaseList();
+  return (p.groups[v]||[]).filter(r=>!r.skip&&r.qty>0);
+}
+function waVendorOrder(v){
+  const rows=poVendorRows(v);
+  if(!rows.length){alert('Nothing to order from '+v+'.');return}
+  const L=['*ElectroBotics — Purchase order*','','Vendor: '+v,'Date: '+fmtDate(today()),''];
+  rows.forEach((r,i)=>{
+    L.push(`${i+1}. ${r.name}`);
+    L.push(`   ${r.sku?'SKU '+r.sku+' · ':''}${r.qty} ${r.unit||''} × ${CURRENCY}${r.rate} = ${CURRENCY}${Math.round(r.value).toLocaleString('en-IN')}`);
+  });
+  L.push('');
+  L.push('*Total: '+CURRENCY+Math.round(rows.reduce((s,r)=>s+r.value,0)).toLocaleString('en-IN')+'*');
+  L.push('');
+  L.push('Please confirm availability and delivery time.');
+  L.push('');
+  L.push('*ElectroBotics*');
+  openWa(v,L.join('\n'));
+}
+
 // ─── Stock log ──────────────────────────────────────────────────
 function moveTableHtml(rows,forCentre){
   return `<thead><tr><th>Date</th><th>Type</th><th>Module</th><th class="num">Qty</th><th>From</th><th>To</th><th>Ref</th><th>By</th><th>Note</th></tr></thead><tbody>`+
@@ -2455,7 +2649,7 @@ function refreshAll(){
   buildCombos();
   if(role==='admin'){
     renderStats();renderLow();renderRequirement();renderInventory();
-    renderKitTable();renderCentreTable();renderOrders();renderMoves();renderSalesTable();
+    renderKitTable();renderCentreTable();renderOrders();renderPurchase();renderMoves();renderSalesTable();
     if(byId('panel-summary').classList.contains('active'))setTimeout(buildCharts,20);
   }
   if(currentScreen==='kits')renderKits();
@@ -2838,6 +3032,46 @@ function exportBills(){
     });
   });
   xlsx(rows,'Sales','ElectroBotics_Sales');
+}
+
+
+// ─── Purchase exports ───────────────────────────────────────────
+function poSheetRows(rows){
+  return rows.map(r=>({
+    'Item Code':r.code,'Module Name':r.name,'SKU':r.sku,'Unit':r.unit,
+    'Order Qty':r.qty,'Rate':r.rate,'Value':+r.value.toFixed(2),
+    'For Kit Orders':r.forKits,'For Centre Refill':r.forCentres,
+    'In Stock':r.stock,'At Central Store':r.central,
+    'Landed Cost / unit':+totalCostOf(r.item).toFixed(2),
+    'Landed Value':+r.landed.toFixed(2)}));
+}
+/** Excel tab names: 31 chars, none of  \ / ? * [ ] :  */
+function safeSheetName(n,used){
+  let base=String(n).replace(/[\\\/\?\*\[\]:]/g,'-').trim().substring(0,31)||'Vendor';
+  let name=base,i=2;
+  while(used[name]){const suf=' ('+i+')';name=base.substring(0,31-suf.length)+suf;i++}
+  used[name]=1;return name;
+}
+function exportPurchaseVendor(v){
+  const rows=poVendorRows(v);
+  if(!rows.length){alert('Nothing to order from '+v+'.');return}
+  xlsx(poSheetRows(rows),safeSheetName(v,{}),'ElectroBotics_Order_'+String(v).replace(/\W+/g,'_'));
+}
+function exportPurchaseAll(){
+  if(typeof XLSX==='undefined'){alert('Excel library not loaded.');return}
+  const p=purchaseList();
+  const wb=XLSX.utils.book_new();const used={};let any=false;
+  p.vendors.forEach(v=>{
+    const rows=(p.groups[v]||[]).filter(r=>!r.skip&&r.qty>0);
+    if(!rows.length)return;
+    any=true;
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(poSheetRows(rows)),safeSheetName(v,used));
+  });
+  if(!any){alert('Nothing to order right now.');return}
+  // a combined sheet first, for anyone who prefers to filter it themselves
+  const all=p.active.map(r=>Object.assign({Supplier:r.supplier},poSheetRows([r])[0]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(all),safeSheetName('All Vendors',used));
+  XLSX.writeFile(wb,'ElectroBotics_PurchaseOrders_'+today()+'.xlsx');
 }
 
 // ─── Init ───────────────────────────────────────────────────────
