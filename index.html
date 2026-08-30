@@ -1755,23 +1755,27 @@ function openKit(code){
     <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Buildable Now</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">from ${esc(centreName(kdLoc))} stock</div></div>
     <div class="stat-card amber"><div class="stat-label">Short Modules</div><div class="stat-value">${s.short}</div><div class="stat-sub">not enough for one kit</div></div>`;
 
-  const locs=allLocations();
   const rows=bomFor(code);
+  // Stock for ONE location only (the central store by default). Other centres'
+  // stock is deployed, so showing it here would only invite the wrong conclusion.
   byId('kdTable').innerHTML=`<thead><tr>
-      <th>Item Code</th><th>Module</th><th class="num">Qty / Kit</th>
-      ${locs.map(c=>`<th class="num" title="${esc(c['Centre Code'])}">${esc(c['Centre Name'])}</th>`).join('')}
-      <th class="num">Total</th><th class="num">Unit Cost</th><th class="num">Line Cost</th><th>Status</th></tr></thead><tbody>`+
+      <th>Item Code</th><th>Module</th><th>Supplier</th><th class="num">Qty / Kit</th>
+      <th class="num">At ${esc(centreName(kdLoc))}</th><th class="num">Builds</th>
+      <th class="num">Unit Cost</th><th class="num">Line Cost</th><th>Status</th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>{
       const it=itemByCode(r['Item Code']);const q=num(r.Qty)||1;
-      if(!it)return `<tr><td class="mono">${esc(r['Item Code'])}</td><td colspan="${locs.length+5}" style="color:var(--red);">Not found in inventory</td><td><span class="badge out">Missing</span></td></tr>`;
+      if(!it)return `<tr><td class="mono">${esc(r['Item Code'])}</td><td colspan="7" style="color:var(--red);">Not found in inventory</td><td><span class="badge out">Missing</span></td></tr>`;
       const uc=totalCostOf(it),code2=it['Item Code'];
       const have=qtyAt(code2,kdLoc);
-      return `<tr><td class="mono">${esc(code2)}</td><td>${esc(it['Module Name'])}</td><td class="num">${q}</td>
-        ${locs.map(c=>{const cq=qtyAt(code2,c['Centre Code']);
-          return `<td class="qty-cell ${cq<q?'out':cq===0?'zero':''}">${cq}</td>`}).join('')}
-        <td class="num"><b>${totalQty(code2)}</b></td><td class="num">${money(uc)}</td><td class="num">${money(uc*q)}</td>
-        <td>${have>=q?'<span class="badge ok">OK</span>':'<span class="badge out">Short</span>'}</td></tr>`;
-    }).join(''):`<tr><td colspan="${locs.length+7}" class="tbl-empty">No components defined for this kit yet.</td></tr>`)+'</tbody>';
+      const builds=Math.floor(have/q);
+      return `<tr><td class="mono">${esc(code2)}</td><td>${esc(it['Module Name'])}</td>
+        <td style="color:var(--text-dim);font-size:12px">${esc(it.Supplier||'')}</td>
+        <td class="num">${q}</td>
+        <td class="qty-cell ${have<q?'out':have===0?'zero':''}"><b>${have}</b></td>
+        <td class="num" style="color:var(--text-dim)">${builds}</td>
+        <td class="num">${money(uc)}</td><td class="num">${money(uc*q)}</td>
+        <td>${have>=q?'<span class="badge ok">OK</span>':'<span class="badge out">Short '+(q-have)+'</span>'}</td></tr>`;
+    }).join(''):`<tr><td colspan="9" class="tbl-empty">No components defined for this kit yet.</td></tr>`)+'</tbody>';
   go('kit');
 }
 
@@ -3604,17 +3608,16 @@ function exportLow(){
 }
 function exportKitBom(){
   const k=kitByCode(currentKit);if(!k)return;
-  const locs=allLocations();
+  const loc=kdLoc||centralCode();
   xlsx(bomFor(currentKit).map(b=>{
     const it=itemByCode(b['Item Code'])||{};
-    const row={Kit:k['Kit Name'],'Item Code':b['Item Code'],'Module Name':it['Module Name']||'','Qty per Kit':num(b.Qty)};
-    locs.forEach(l=>{row[l['Centre Name']]=qtyAt(b['Item Code'],l['Centre Code'])});
-    row['At Central Store']=centralQty(b['Item Code']);
-    row['Total (all locations)']=totalQty(b['Item Code']);
-    row['Unit Cost']=+totalCostOf(it).toFixed(2);
-    row['Line Cost']=+(totalCostOf(it)*num(b.Qty)).toFixed(2);
-    row['EB Cost']=ebCostOf(it);
-    return row;
+    const q=num(b.Qty),have=qtyAt(b['Item Code'],loc);
+    return {Kit:k['Kit Name'],'Item Code':b['Item Code'],'Module Name':it['Module Name']||'',
+      Supplier:it.Supplier||'',SKU:it.SKU||'','Qty per Kit':q,
+      ['At '+centreName(loc)]:have,'Builds':q?Math.floor(have/q):0,
+      'Short By':Math.max(q-have,0),
+      'Unit Cost':+totalCostOf(it).toFixed(2),'Line Cost':+(totalCostOf(it)*q).toFixed(2),
+      'EB Cost':ebCostOf(it)};
   }),'BOM','ElectroBotics_'+String(k['Kit Code']).replace(/\W+/g,'_'));
 }
 function exportShortfall(){
