@@ -794,12 +794,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="form-row"><label>SKU</label><input type="text" id="i_SKU" placeholder="Supplier's part number"></div>
         <div class="form-row"><label>Unit</label><select id="i_Unit"><option>pcs</option><option>set</option><option>metre</option><option>pack</option><option>roll</option></select></div>
 
-        <div class="form-divider">Cost build-up (per unit)</div>
+        <div class="form-divider">Cost build-up (per unit) — shipping, GST and handling are % of the base rate</div>
         <div class="form-row"><label>Purchase Rate ₹</label><input type="number" step="0.01" id="i_Rate" oninput="recalcCost()" placeholder="0.00"></div>
         <div class="form-row"><label>Round Off Rate ₹</label><input type="number" step="0.01" id="i_Round" oninput="recalcCost()" placeholder="blank = same as purchase rate"></div>
-        <div class="form-row"><label>Shipping ₹</label><input type="number" step="0.01" id="i_Ship" oninput="recalcCost()" placeholder="0.00"></div>
+        <div class="form-row"><label>Shipping %</label><input type="number" step="0.01" id="i_Ship" oninput="recalcCost()" placeholder="e.g. 6"><small>% of the base rate</small></div>
         <div class="form-row"><label>GST %</label><input type="number" step="0.01" id="i_GST" oninput="recalcCost()" placeholder="18"></div>
-        <div class="form-row"><label>Handling ₹</label><input type="number" step="0.01" id="i_Handle" oninput="recalcCost()" placeholder="0.00"></div>
+        <div class="form-row"><label>Handling %</label><input type="number" step="0.01" id="i_Handle" oninput="recalcCost()" placeholder="e.g. 3"><small>% of the base rate</small></div>
         <div class="form-row"><label>ElectroBotics Cost ₹ <small style="text-transform:none;letter-spacing:0;">— auto at <span id="i_MarginLbl">40</span>% on cost</small></label>
           <div class="auto-price" id="i_AutoPrice"><div><div class="ap-val" id="i_AutoVal">₹0</div><div class="ap-note" id="i_AutoNote"></div></div></div>
           <input type="number" step="1" id="i_EBCost" oninput="recalcCost()" style="display:none;" placeholder="your price">
@@ -1021,6 +1021,9 @@ const MARGIN_PCT  = 40;         // ElectroBotics Cost = landed cost + this % ON 
 const PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 5 = nearest ₹5)
 // ══════════════════════════════════════════════════
 
+// Lowest Code.gs version this build needs. Bump both together.
+const REQUIRED_BACKEND = 3;
+
 const SHEETS = {inv:'Inventory',kits:'Kits',bom:'KitComponents',centres:'Centres',cstock:'CentreStock',
                 moves:'StockMoves',orders:'Orders',sales:'Sales',items:'SaleItems',users:'Users'};
 
@@ -1043,12 +1046,22 @@ function closeModal(id){byId(id).classList.remove('open')}
 function openModalEl(id){byId(id).classList.add('open')}
 function same(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase()}
 
-// Cost build-up: base(rounded) + shipping + GST% of base + handling
+/**
+ * Cost build-up. Shipping, GST and Handling are all PERCENTAGES of the base
+ * rate (the rounded rate, or the purchase rate if no rounding is set), so a
+ * rate change carries all three along with it.
+ *   total = base x (1 + (ship% + gst% + handling%)/100)
+ * Older sheets that still name the columns 'Shipping'/'Handling' are read at
+ * the same position and treated as percentages too.
+ */
 function costOf(it){
   const base=num(it['Round Off Rate'])||num(it['Purchase Rate']);
-  const ship=num(it['Shipping']),handle=num(it['Handling']),gstPc=num(it['GST %']||it['GST']);
-  const gst=base*gstPc/100;
-  return {base:base,ship:ship,gst:gst,gstPc:gstPc,handle:handle,total:base+ship+gst+handle};
+  const shipPc=num(blank(it['Shipping %'])?it['Shipping']:it['Shipping %']);
+  const handlePc=num(blank(it['Handling %'])?it['Handling']:it['Handling %']);
+  const gstPc=num(it['GST %']||it['GST']);
+  const ship=base*shipPc/100, gst=base*gstPc/100, handle=base*handlePc/100;
+  return {base:base,shipPc:shipPc,ship:ship,gstPc:gstPc,gst:gst,handlePc:handlePc,handle:handle,
+          total:base+ship+gst+handle};
 }
 function totalCostOf(it){if(!it)return 0;const t=num(it['Total Cost']);return t>0?t:costOf(it).total}
 /** Selling price from landed cost at the standard margin. */
@@ -1192,7 +1205,12 @@ async function loadData(){
     if(SHEET_WEBAPP_URL){
       const res=await fetch(SHEET_WEBAPP_URL+'?action=getAll');
       const d=await res.json();
-      if(d&&d.ok){applyPayload(d);byId('configNotice').style.display='none';_readyResolve();return}
+      if(d&&d.ok){
+        applyPayload(d);
+        if(num(d.version)<REQUIRED_BACKEND){staleBackendNotice()}
+        else byId('configNotice').style.display='none';
+        _readyResolve();return;
+      }
       throw new Error((d&&d.error)||'getAll failed');
     }
     throw new Error('no endpoint');
@@ -1215,6 +1233,16 @@ async function loadData(){
   _readyResolve();
 }
 
+/** The script file was edited but never re-deployed — by far the most common setup slip. */
+function staleBackendNotice(){
+  const n=byId('configNotice');n.style.display='block';
+  n.innerHTML='<strong>Your Apps Script deployment is out of date.</strong> The sheet is loading, '+
+    'but saving will fail for anything newer than the deployed code.<br><br>'+
+    'In the sheet: <b>Extensions → Apps Script</b>, paste the latest <code>Code.gs</code>, save, '+
+    'run <code>setupSheets</code>, then <b>Deploy → Manage deployments → ✏️ → Version: New version → Deploy</b>. '+
+    'Editing the file alone is not enough — Apps Script keeps serving the last deployed version.';
+}
+
 function showConfigError(html){const n=byId('configNotice');n.style.display='block';n.innerHTML='<strong>Setup:</strong> '+html;}
 
 async function post(body){
@@ -1224,7 +1252,12 @@ async function post(body){
   }
   try{
     const res=await fetch(SHEET_WEBAPP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
-    return await res.json();
+    const out=await res.json();
+    if(out&&!out.ok&&/unknown action/i.test(String(out.error||''))){
+      staleBackendNotice();
+      out.error='your Apps Script deployment is out of date — see the note at the top of the page';
+    }
+    return out;
   }catch(e){console.error('post error',e);return {ok:false,error:e.message}}
 }
 
@@ -1232,16 +1265,16 @@ async function post(body){
 function loadDemoData(){
   demoMode=true;
   INV=[
-    {'Item Code':'EB-M-001','Module Name':'Arduino Uno R3 (clone)','Category':'Controller','Supplier':'Robu.in','SKU':'RB-UNO-01','Purchase Rate':'385','Round Off Rate':'390','Shipping':'25','GST %':'18','Handling':'10','Total Cost':'495.20','Default Min Qty':'8','Unit':'pcs','Date':'2026-07-12','Comments':'Bulk of 10 gets free shipping'},
-    {'Item Code':'EB-M-002','Module Name':'HC-SR04 Ultrasonic Sensor','Category':'Sensor','Supplier':'Robu.in','SKU':'RB-SR04','Purchase Rate':'62','Round Off Rate':'65','Shipping':'6','GST %':'18','Handling':'3','Total Cost':'85.70','Default Min Qty':'12','Unit':'pcs','Date':'2026-07-12','Comments':''},
-    {'Item Code':'EB-M-003','Module Name':'SG90 Micro Servo','Category':'Actuator','Supplier':'Element14','SKU':'E14-SG90','Purchase Rate':'78','Round Off Rate':'80','Shipping':'8','GST %':'18','Handling':'4','Total Cost':'106.40','Default Min Qty':'10','Unit':'pcs','Date':'2026-06-28','Comments':'Reorder — long lead time'},
-    {'Item Code':'EB-M-004','Module Name':'NodeMCU ESP8266','Category':'Controller','Supplier':'Quartz Components','SKU':'QC-NODE','Purchase Rate':'245','Round Off Rate':'250','Shipping':'20','GST %':'18','Handling':'8','Total Cost':'323.00','Default Min Qty':'8','Unit':'pcs','Date':'2026-08-02','Comments':''},
-    {'Item Code':'EB-M-005','Module Name':'L298N Motor Driver','Category':'Driver','Supplier':'Robu.in','SKU':'RB-L298','Purchase Rate':'118','Round Off Rate':'120','Shipping':'10','GST %':'18','Handling':'5','Total Cost':'156.60','Default Min Qty':'8','Unit':'pcs','Date':'2026-07-30','Comments':''},
-    {'Item Code':'EB-M-006','Module Name':'Jumper Wire Set (120pc)','Category':'Wiring','Supplier':'Amazon','SKU':'AMZ-JW120','Purchase Rate':'145','Round Off Rate':'145','Shipping':'0','GST %':'18','Handling':'5','Total Cost':'176.10','Default Min Qty':'10','Unit':'set','Date':'2026-08-10','Comments':'Prime delivery'},
-    {'Item Code':'EB-M-007','Module Name':'DHT11 Temp/Humidity Sensor','Category':'Sensor','Supplier':'Quartz Components','SKU':'QC-DHT11','Purchase Rate':'68','Round Off Rate':'70','Shipping':'6','GST %':'18','Handling':'3','Total Cost':'91.60','Default Min Qty':'10','Unit':'pcs','Date':'2026-08-10','Comments':''},
-    {'Item Code':'EB-M-008','Module Name':'BO Motor + Wheel Pair','Category':'Actuator','Supplier':'Robu.in','SKU':'RB-BOW','Purchase Rate':'165','Round Off Rate':'165','Shipping':'12','GST %':'18','Handling':'6','Total Cost':'212.70','Default Min Qty':'8','Unit':'set','Date':'2026-07-18','Comments':''},
-    {'Item Code':'EB-M-009','Module Name':'Raspberry Pi Pico W','Category':'Controller','Supplier':'Element14','SKU':'E14-PICOW','Purchase Rate':'615','Round Off Rate':'620','Shipping':'30','GST %':'18','Handling':'12','Total Cost':'773.60','Default Min Qty':'5','Unit':'pcs','Date':'2026-08-14','Comments':''},
-    {'Item Code':'EB-M-010','Module Name':'Breadboard 830 point','Category':'Wiring','Supplier':'Amazon','SKU':'AMZ-BB830','Purchase Rate':'82','Round Off Rate':'85','Shipping':'0','GST %':'18','Handling':'4','Total Cost':'104.30','Default Min Qty':'10','Unit':'pcs','Date':'2026-08-10','Comments':''}
+    {'Item Code':'EB-M-001','Module Name':'Arduino Uno R3 (clone)','Category':'Controller','Supplier':'Robu.in','SKU':'RB-UNO-01','Purchase Rate':'385','Round Off Rate':'390','Shipping %':'6','GST %':'18','Handling %':'3','Default Min Qty':'8','Unit':'pcs','Date':'2026-07-12','Comments':'Bulk of 10 gets free shipping'},
+    {'Item Code':'EB-M-002','Module Name':'HC-SR04 Ultrasonic Sensor','Category':'Sensor','Supplier':'Robu.in','SKU':'RB-SR04','Purchase Rate':'62','Round Off Rate':'65','Shipping %':'9','GST %':'18','Handling %':'5','Default Min Qty':'12','Unit':'pcs','Date':'2026-07-12','Comments':''},
+    {'Item Code':'EB-M-003','Module Name':'SG90 Micro Servo','Category':'Actuator','Supplier':'Element14','SKU':'E14-SG90','Purchase Rate':'78','Round Off Rate':'80','Shipping %':'10','GST %':'18','Handling %':'5','Default Min Qty':'10','Unit':'pcs','Date':'2026-06-28','Comments':'Reorder — long lead time'},
+    {'Item Code':'EB-M-004','Module Name':'NodeMCU ESP8266','Category':'Controller','Supplier':'Quartz Components','SKU':'QC-NODE','Purchase Rate':'245','Round Off Rate':'250','Shipping %':'8','GST %':'18','Handling %':'3','Default Min Qty':'8','Unit':'pcs','Date':'2026-08-02','Comments':''},
+    {'Item Code':'EB-M-005','Module Name':'L298N Motor Driver','Category':'Driver','Supplier':'Robu.in','SKU':'RB-L298','Purchase Rate':'118','Round Off Rate':'120','Shipping %':'8','GST %':'18','Handling %':'4','Default Min Qty':'8','Unit':'pcs','Date':'2026-07-30','Comments':''},
+    {'Item Code':'EB-M-006','Module Name':'Jumper Wire Set (120pc)','Category':'Wiring','Supplier':'Amazon','SKU':'AMZ-JW120','Purchase Rate':'145','Round Off Rate':'145','Shipping %':'0','GST %':'18','Handling %':'3','Default Min Qty':'10','Unit':'set','Date':'2026-08-10','Comments':'Prime delivery'},
+    {'Item Code':'EB-M-007','Module Name':'DHT11 Temp/Humidity Sensor','Category':'Sensor','Supplier':'Quartz Components','SKU':'QC-DHT11','Purchase Rate':'68','Round Off Rate':'70','Shipping %':'9','GST %':'18','Handling %':'4','Default Min Qty':'10','Unit':'pcs','Date':'2026-08-10','Comments':''},
+    {'Item Code':'EB-M-008','Module Name':'BO Motor + Wheel Pair','Category':'Actuator','Supplier':'Robu.in','SKU':'RB-BOW','Purchase Rate':'165','Round Off Rate':'165','Shipping %':'7','GST %':'18','Handling %':'4','Default Min Qty':'8','Unit':'set','Date':'2026-07-18','Comments':''},
+    {'Item Code':'EB-M-009','Module Name':'Raspberry Pi Pico W','Category':'Controller','Supplier':'Element14','SKU':'E14-PICOW','Purchase Rate':'615','Round Off Rate':'620','Shipping %':'5','GST %':'18','Handling %':'2','Default Min Qty':'5','Unit':'pcs','Date':'2026-08-14','Comments':''},
+    {'Item Code':'EB-M-010','Module Name':'Breadboard 830 point','Category':'Wiring','Supplier':'Amazon','SKU':'AMZ-BB830','Purchase Rate':'82','Round Off Rate':'85','Shipping %':'0','GST %':'18','Handling %':'5','Default Min Qty':'10','Unit':'pcs','Date':'2026-08-10','Comments':''}
   ];
   CENTRES=[
     {'Centre Code':'HQ','Centre Name':'Central Store','City':'Chennai','Incharge':'Ganesh','Contact':'','Type':'Central','Color':'#008fa0','Status':'Active'},
@@ -1813,7 +1846,7 @@ function renderInventory(){
   if(invView==='cost'){
     byId('invTable').innerHTML=`<thead><tr>
         <th>Item Code</th><th>Module</th><th>Supplier</th><th>SKU</th>
-        <th class="num">Rate</th><th class="num">R/off</th><th class="num">Ship</th><th class="num">GST%</th><th class="num">Handling</th>
+        <th class="num">Rate</th><th class="num">R/off</th><th class="num">Ship%</th><th class="num">GST%</th><th class="num">Handling%</th>
         <th class="num">Total Cost</th><th class="price-cell">EB Cost</th><th class="num">Margin</th><th class="num">Stock Value</th><th>Date</th><th></th>
       </tr></thead><tbody>`+
       (invRows.length?invRows.map(i=>{
@@ -1823,7 +1856,7 @@ function renderInventory(){
           <td><div style="font-weight:600">${esc(i['Module Name'])}</div><div class="mono" style="font-size:10px;color:var(--text-light)">${esc(i.Category||'')}</div></td>
           <td>${esc(i.Supplier||'')}</td><td class="mono">${esc(i.SKU||'')}</td>
           <td class="num cost-dim">${money(i['Purchase Rate'],0)}</td><td class="num cost-dim">${i['Round Off Rate']?money(i['Round Off Rate'],0):'—'}</td>
-          <td class="num cost-dim">${money(i.Shipping,0)}</td><td class="num cost-dim">${num(i['GST %'])||0}</td><td class="num cost-dim">${money(i.Handling,0)}</td>
+          <td class="num cost-dim">${costOf(i).shipPc||0}</td><td class="num cost-dim">${num(i['GST %'])||0}</td><td class="num cost-dim">${costOf(i).handlePc||0}</td>
           <td class="num">${money(tc)}</td>
           <td class="price-cell"><span class="p">${money(eb,0)}</span><span class="pm">${man?'manual':'+'+MARGIN_PCT+'%'}</span></td>
           <td class="num cost-dim">${money0(eb-tc)}</td>
@@ -1865,7 +1898,7 @@ function renderInventory(){
 // ─── Item form ──────────────────────────────────────────────────
 let editingItem=null;
 const ITEM_FIELDS={i_Code:'Item Code',i_Name:'Module Name',i_SKU:'SKU',i_Unit:'Unit',i_Rate:'Purchase Rate',
-  i_Round:'Round Off Rate',i_Ship:'Shipping',i_GST:'GST %',i_Handle:'Handling',
+  i_Round:'Round Off Rate',i_Ship:'Shipping %',i_GST:'GST %',i_Handle:'Handling %',
   i_Notes:'Comments'};
 
 function nextItemCode(){
@@ -1915,7 +1948,7 @@ function fromItemModal(what){
 }
 function recalcCost(){
   const draft={'Purchase Rate':byId('i_Rate').value,'Round Off Rate':byId('i_Round').value,
-    'Shipping':byId('i_Ship').value,'GST %':byId('i_GST').value,'Handling':byId('i_Handle').value};
+    'Shipping %':byId('i_Ship').value,'GST %':byId('i_GST').value,'Handling %':byId('i_Handle').value};
   const c=costOf(draft);
   const manual=byId('i_Manual').checked;
   const auto=autoPrice(c.total);
@@ -1927,9 +1960,9 @@ function recalcCost(){
     : money(c.total)+' + '+MARGIN_PCT+'% &nbsp;·&nbsp; profit '+money(margin);
   byId('costPreview').innerHTML=`
     <div class="cost-line"><span>Base rate ${byId('i_Round').value?'(rounded)':''}</span><span>${money(c.base)}</span></div>
-    <div class="cost-line"><span>Shipping</span><span>${money(c.ship)}</span></div>
+    <div class="cost-line"><span>Shipping @ ${c.shipPc||0}%</span><span>${money(c.ship)}</span></div>
     <div class="cost-line"><span>GST @ ${c.gstPc||0}%</span><span>${money(c.gst)}</span></div>
-    <div class="cost-line"><span>Handling</span><span>${money(c.handle)}</span></div>
+    <div class="cost-line"><span>Handling @ ${c.handlePc||0}%</span><span>${money(c.handle)}</span></div>
     <div class="cost-line total"><span>Total Cost / unit</span><span class="v">${money(c.total)}</span></div>
     ${eb>0?`<div class="cost-line" style="margin-top:6px;"><span>Margin at EB cost ${money(eb)}</span><span style="color:${margin>=0?'var(--green)':'var(--red)'};font-weight:700">${margin>=0?'+':''}${money(margin)}${c.total>0?' · '+Math.round(margin/c.total*100)+'%':''}</span></div>`:''}`;
 }
@@ -1939,7 +1972,7 @@ function toggleManualPrice(){
   byId('i_AutoPrice').style.display=manual?'none':'';
   if(manual&&num(byId('i_EBCost').value)<=0){
     const c=costOf({'Purchase Rate':byId('i_Rate').value,'Round Off Rate':byId('i_Round').value,
-      'Shipping':byId('i_Ship').value,'GST %':byId('i_GST').value,'Handling':byId('i_Handle').value});
+      'Shipping %':byId('i_Ship').value,'GST %':byId('i_GST').value,'Handling %':byId('i_Handle').value});
     byId('i_EBCost').value=autoPrice(c.total);
   }
   recalcCost();
@@ -2734,8 +2767,9 @@ function exportInventory(){
   xlsx((invRows.length?invRows:INV).map(i=>{
     const c=i['Item Code'];
     const row={'Item Code':c,'Module Name':i['Module Name'],Category:i.Category||'',Supplier:i.Supplier||'',SKU:i.SKU||'',
-      'Purchase Rate':num(i['Purchase Rate']),'Round Off Rate':num(i['Round Off Rate']),Shipping:num(i.Shipping),
-      'GST %':num(i['GST %']),Handling:num(i.Handling),'Total Cost':+totalCostOf(i).toFixed(2),
+      'Purchase Rate':num(i['Purchase Rate']),'Round Off Rate':num(i['Round Off Rate']),
+      'Shipping %':costOf(i).shipPc,'GST %':num(i['GST %']),'Handling %':costOf(i).handlePc,
+      'Total Cost':+totalCostOf(i).toFixed(2),
       'ElectroBotics Cost':ebCostOf(i),'Price Mode':same(i['Price Mode'],'Manual')?'Manual':'Auto ('+MARGIN_PCT+'%)',Unit:i.Unit||''};
     locs.forEach(l=>{row[l['Centre Name']]=qtyAt(c,l['Centre Code'])});
     locs.filter(l=>!isCentral(l)).forEach(l=>{row['Min · '+l['Centre Name']]=minAt(c,l['Centre Code'])});
