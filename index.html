@@ -112,6 +112,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .dash-tab.active{color:var(--accent-dark);border-bottom-color:var(--accent)}
 .dash-panel{display:none}
 .dash-panel.active{display:block}
+/* second-level tabs, e.g. Inventory → Modules / Stock Log */
+.sub-tabs{display:inline-flex;gap:4px;margin-bottom:18px;padding:4px;background:var(--surface-alt);border:1px solid var(--border);border-radius:10px;flex-wrap:wrap}
+.sub-tab{font-family:var(--font-mono);font-size:11px;font-weight:700;padding:7px 15px;border:none;border-radius:7px;background:transparent;color:var(--text-dim);cursor:pointer;transition:all .18s;white-space:nowrap}
+.sub-tab:hover{color:var(--text)}
+.sub-tab.active{background:var(--surface);color:var(--accent-dark);box-shadow:0 1px 4px rgba(0,143,160,.12)}
+.sub-panel{display:none}
+.sub-panel.active{display:block}
 
 /* ─── Tables ─── */
 .table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:28px}
@@ -553,14 +560,46 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="page-title">Kits</div>
         <div class="page-sub" id="kitsSub">Component list and cost for every ElectroBotics kit</div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;" id="kitsHeadActions">
         <div class="filter-group"><label>Can build from</label>
           <select id="kitsLocFilter" onchange="renderKits()"></select>
         </div>
         <button class="btn-add" id="kitsAddBtn" onclick="openKitForm()" style="display:none;">+ New Kit</button>
       </div>
     </div>
-    <div class="kit-grid" id="kitGrid"></div>
+
+    <div class="dash-tabs" id="kitsTabs" style="display:none;">
+      <button class="dash-tab active" data-group="kits" data-tab="browse" onclick="setPanel('kits','browse')">All Kits</button>
+      <button class="dash-tab" data-group="kits" data-tab="manage" onclick="setPanel('kits','manage')">Kits &amp; BOM</button>
+      <button class="dash-tab" data-group="kits" data-tab="orders" onclick="setPanel('kits','orders')">Kit Orders</button>
+    </div>
+
+    <div class="dash-panel active" data-panel-group="kits" data-panel="browse">
+      <div class="kit-grid" id="kitGrid"></div>
+    </div>
+    <div class="dash-panel" data-panel-group="kits" data-panel="manage">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Kits</div>
+            <div class="table-actions"><button class="btn-add" onclick="openKitForm()">+ Add Kit</button></div>
+          </div>
+          <div class="table-wrap"><table class="data-table" id="kitTable"></table></div>
+        </div>
+    
+    </div>
+    <div class="dash-panel" data-panel-group="kits" data-panel="orders">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Kit Order Requirement</div>
+            <div class="table-actions"><button class="btn-add" onclick="openOrderForm()">+ Add Order</button></div>
+          </div>
+          <div class="table-filter-bar" style="background:var(--surface-alt);">
+            <div class="hint" style="margin:0;flex:1;">Open orders drive the <b>Module Requirement</b> table on the dashboard — required qty per module = order qty × kit BOM qty, checked against <b>central store</b> stock.</div>
+          </div>
+          <div class="table-wrap"><table class="data-table" id="orderTable"></table></div>
+        </div>
+    
+    </div>
   </div>
 
   <!-- ══ Kit detail ══ -->
@@ -590,12 +629,36 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="page-title">Centres</div>
         <div class="page-sub" id="centresSub">Stock held at each location</div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;" id="centresHeadActions">
         <button class="act-btn primary" id="centresMoveBtn" onclick="openMove(null,null,'Transfer')" style="display:none;">⇄ Move Stock</button>
         <button class="btn-add" id="centresAddBtn" onclick="openCentreForm()" style="display:none;">+ New Centre</button>
       </div>
     </div>
-    <div class="centre-grid" id="centreGrid"></div>
+
+    <div class="dash-tabs" id="centresTabs" style="display:none;">
+      <button class="dash-tab active" data-group="centres" data-tab="browse" onclick="setPanel('centres','browse')">All Centres</button>
+      <button class="dash-tab" data-group="centres" data-tab="manage" onclick="setPanel('centres','manage')">Manage Centres</button>
+    </div>
+
+    <div class="dash-panel active" data-panel-group="centres" data-panel="browse">
+      <div class="centre-grid" id="centreGrid"></div>
+    </div>
+    <div class="dash-panel" data-panel-group="centres" data-panel="manage">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Centres</div>
+            <div class="table-actions">
+              <button class="act-btn primary" onclick="openMove(null,null,'Transfer')">⇄ Move Stock</button>
+              <button class="btn-add" onclick="openCentreForm()">+ Add Centre</button>
+            </div>
+          </div>
+          <div class="table-filter-bar" style="background:var(--surface-alt);">
+            <div class="hint" style="margin:0;flex:1;">Purchases land at the <b>central store</b>. Move stock out to centres as they run low — the dashboard tells you when a transfer covers the gap and when you actually need to buy.</div>
+          </div>
+          <div class="table-wrap"><table class="data-table" id="centreTable"></table></div>
+        </div>
+    
+    </div>
   </div>
 
   <!-- ══ Centre detail ══ -->
@@ -707,19 +770,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 
   <!-- ══ Admin ══ -->
   <div class="screen" id="adminScreen">
-    <div class="dash-tabs">
-      <button class="dash-tab active" data-tab="summary" onclick="setTab('summary')">Dashboard</button>
-      <button class="dash-tab" data-tab="inventory" onclick="setTab('inventory')">Inventory</button>
-      <button class="dash-tab" data-tab="kits" onclick="setTab('kits')">Kits &amp; BOM</button>
-      <button class="dash-tab" data-tab="centres" onclick="setTab('centres')">Centres</button>
-      <button class="dash-tab" data-tab="orders" onclick="setTab('orders')">Kit Orders</button>
-      <button class="dash-tab" data-tab="purchase" onclick="setTab('purchase')">Purchase</button>
-      <button class="dash-tab" data-tab="moves" onclick="setTab('moves')">Stock Log</button>
-      <button class="dash-tab" data-tab="sales" onclick="setTab('sales')">Sales</button>
+    <div class="dash-tabs" data-tabs="admin">
+      <button class="dash-tab active" data-group="admin" data-tab="summary" onclick="setPanel('admin','summary')">Dashboard</button>
+      <button class="dash-tab" data-group="admin" data-tab="inventory" onclick="setPanel('admin','inventory')">Inventory</button>
+      <button class="dash-tab" data-group="admin" data-tab="purchase" onclick="setPanel('admin','purchase')">Purchase</button>
+      <button class="dash-tab" data-group="admin" data-tab="sales" onclick="setPanel('admin','sales')">Sales</button>
     </div>
 
     <!-- Dashboard -->
-    <div class="dash-panel active" id="panel-summary">
+    <div class="dash-panel active" data-panel-group="admin" data-panel="summary" id="panel-summary">
       <div class="stats-grid" id="admStats"></div>
 
       <div class="chart-card">
@@ -774,7 +833,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     </div>
 
     <!-- Inventory -->
-    <div class="dash-panel" id="panel-inventory">
+    <div class="dash-panel" data-panel-group="admin" data-panel="inventory" id="panel-inventory">
+      <div class="sub-tabs">
+        <button class="sub-tab active" data-group="inv" data-tab="items" onclick="setPanel('inv','items')">Modules</button>
+        <button class="sub-tab" data-group="inv" data-tab="moves" onclick="setPanel('inv','moves')">Stock Log</button>
+      </div>
+      <div class="sub-panel active" data-panel-group="inv" data-panel="items">
       <div class="table-card">
         <div class="table-header">
           <div class="table-title">Inventory <span id="invCount" style="color:var(--text-light);"></span></div>
@@ -801,52 +865,31 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         </div>
         <div class="table-wrap"><table class="data-table" id="invTable"></table></div>
       </div>
-    </div>
-
-    <!-- Kits & BOM -->
-    <div class="dash-panel" id="panel-kits">
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">Kits</div>
-          <div class="table-actions"><button class="btn-add" onclick="openKitForm()">+ Add Kit</button></div>
-        </div>
-        <div class="table-wrap"><table class="data-table" id="kitTable"></table></div>
       </div>
-    </div>
-
-    <!-- Centres -->
-    <div class="dash-panel" id="panel-centres">
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">Centres</div>
-          <div class="table-actions">
-            <button class="act-btn primary" onclick="openMove(null,null,'Transfer')">⇄ Move Stock</button>
-            <button class="btn-add" onclick="openCentreForm()">+ Add Centre</button>
+      <div class="sub-panel" data-panel-group="inv" data-panel="moves">
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Stock Log <span id="moveCount" style="color:var(--text-light);"></span></div>
+            <div class="table-actions">
+              <button class="act-btn primary" onclick="openMove(null,null,'Transfer')">⇄ Move Stock</button>
+              <button class="btn-download" onclick="exportMoves()">↓ Excel</button>
+            </div>
           </div>
+          <div class="table-filter-bar">
+            <div class="filter-group"><label>Search</label><input type="text" id="mSearch" placeholder="Item, ref, note…" oninput="renderMoves()"></div>
+            <div class="filter-group"><label>Type</label><select id="mType" onchange="renderMoves()">
+              <option value="">All</option><option>Receipt</option><option>Transfer</option><option>Sale</option><option>Issue</option><option>Recount</option></select></div>
+            <div class="filter-group"><label>Location</label><select id="mLoc" onchange="renderMoves()"></select></div>
+            <button class="filter-clear" onclick="clearMoveFilters()">Clear</button>
+          </div>
+          <div class="table-wrap"><table class="data-table" id="moveTable"></table></div>
         </div>
-        <div class="table-filter-bar" style="background:var(--surface-alt);">
-          <div class="hint" style="margin:0;flex:1;">Purchases land at the <b>central store</b>. Move stock out to centres as they run low — the dashboard tells you when a transfer covers the gap and when you actually need to buy.</div>
-        </div>
-        <div class="table-wrap"><table class="data-table" id="centreTable"></table></div>
-      </div>
-    </div>
-
-    <!-- Kit orders -->
-    <div class="dash-panel" id="panel-orders">
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">Kit Order Requirement</div>
-          <div class="table-actions"><button class="btn-add" onclick="openOrderForm()">+ Add Order</button></div>
-        </div>
-        <div class="table-filter-bar" style="background:var(--surface-alt);">
-          <div class="hint" style="margin:0;flex:1;">Open orders drive the <b>Module Requirement</b> table on the dashboard — required qty per module = order qty × kit BOM qty, checked against <b>central store</b> stock.</div>
-        </div>
-        <div class="table-wrap"><table class="data-table" id="orderTable"></table></div>
+    
       </div>
     </div>
 
     <!-- Purchase -->
-    <div class="dash-panel" id="panel-purchase">
+    <div class="dash-panel" data-panel-group="admin" data-panel="purchase" id="panel-purchase">
       <div class="po-head">
         <div>
           <div class="page-title" style="font-size:19px;">What to Order</div>
@@ -867,29 +910,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
       <div id="poVendors"></div>
     </div>
 
-    <!-- Stock log -->
-    <div class="dash-panel" id="panel-moves">
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">Stock Log <span id="moveCount" style="color:var(--text-light);"></span></div>
-          <div class="table-actions">
-            <button class="act-btn primary" onclick="openMove(null,null,'Transfer')">⇄ Move Stock</button>
-            <button class="btn-download" onclick="exportMoves()">↓ Excel</button>
-          </div>
-        </div>
-        <div class="table-filter-bar">
-          <div class="filter-group"><label>Search</label><input type="text" id="mSearch" placeholder="Item, ref, note…" oninput="renderMoves()"></div>
-          <div class="filter-group"><label>Type</label><select id="mType" onchange="renderMoves()">
-            <option value="">All</option><option>Receipt</option><option>Transfer</option><option>Sale</option><option>Issue</option><option>Recount</option></select></div>
-          <div class="filter-group"><label>Location</label><select id="mLoc" onchange="renderMoves()"></select></div>
-          <button class="filter-clear" onclick="clearMoveFilters()">Clear</button>
-        </div>
-        <div class="table-wrap"><table class="data-table" id="moveTable"></table></div>
-      </div>
-    </div>
-
     <!-- Sales -->
-    <div class="dash-panel" id="panel-sales">
+    <div class="dash-panel" data-panel-group="admin" data-panel="sales" id="panel-sales">
       <div class="table-card">
         <div class="table-header">
           <div class="table-title">All Sales</div>
@@ -1071,7 +1093,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     <div class="modal-msg" id="mn_Msg"></div>
     <div class="modal-foot">
       <button class="btn-cancel" onclick="closeModal('minModal')">Cancel</button>
-      <button class="btn-save" id="mn_SaveBtn" onclick="saveMins()">Save Levels</button>
+      <button class="btn-save" id="mn_SaveBtn" onclick="saveMins()">Save Min Qty</button>
     </div>
   </div>
 </div>
@@ -1677,6 +1699,11 @@ function applyNav(){
   byId('kitsAddBtn').style.display=adm;
   byId('centresAddBtn').style.display=adm;
   byId('centresMoveBtn').style.display=adm;
+  // Kits & BOM / Kit Orders / Manage Centres are admin work — tutors just see the cards.
+  const isAdmin=!!(user&&role==='admin');
+  byId('kitsTabs').style.display=isAdmin?'':'none';
+  byId('centresTabs').style.display=isAdmin?'':'none';
+  if(!isAdmin){setPanel('kits','browse');setPanel('centres','browse');}
 }
 
 function toggleAccountMenu(e){e.stopPropagation();byId('accountDropdown').classList.toggle('open');}
@@ -1701,8 +1728,8 @@ function go(screen){
   byId('navSell').classList.toggle('active',screen==='sell'||screen==='bills');
   byId('navAdmin').classList.toggle('active',screen==='admin');
   window.scrollTo(0,0);
-  if(screen==='kits')renderKits();
-  if(screen==='centres')renderCentres();
+  if(screen==='kits'){renderKits();if(role==='admin'){renderKitTable();renderOrders();}}
+  if(screen==='centres'){renderCentres();if(role==='admin')renderCentreTable();}
   if(screen==='sell'){renderSellCentres();renderPickList();renderCart();}
   if(screen==='bills')renderBills();
   if(screen==='admin')renderAdmin();
@@ -2082,14 +2109,30 @@ function pickerKey(pid,ev){
 document.addEventListener('click',()=>{document.querySelectorAll('.picker-menu.open').forEach(m=>m.classList.remove('open'));pickerOpenId=null});
 
 // ─── Admin: tabs & render ───────────────────────────────────────
-function setTab(tab){
-  document.querySelectorAll('.dash-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-  document.querySelectorAll('.dash-panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+tab));
-  if(tab==='summary')setTimeout(buildCharts,30);
+/**
+ * One tab mechanism for every strip on the page. Buttons carry data-group +
+ * data-tab, panels carry data-panel-group + data-panel, so Kits, Centres,
+ * Inventory and Admin can each have their own tabs without colliding.
+ */
+let activePanel={admin:'summary',kits:'browse',centres:'browse',inv:'items'};
+function setPanel(group,name){
+  activePanel[group]=name;
+  document.querySelectorAll('[data-group="'+group+'"]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('[data-panel-group="'+group+'"]').forEach(p=>p.classList.toggle('active',p.dataset.panel===name));
+  if(group==='kits'){
+    // the page-head filter + "New Kit" belong to the card grid only
+    const h=byId('kitsHeadActions');if(h)h.style.display=name==='browse'?'flex':'none';
+  }
+  if(group==='centres'){
+    const h=byId('centresHeadActions');if(h)h.style.display=name==='browse'?'flex':'none';
+  }
+  if(group==='admin'&&name==='summary')setTimeout(buildCharts,30);
 }
+function setTab(tab){setPanel('admin',tab)}   // kept: older call sites
 function renderAdmin(){
-  buildCombos();renderStats();renderLow();renderRequirement();renderInventory();
-  renderKitTable();renderCentreTable();renderOrders();renderPurchase();renderMoves();renderSalesTable();
+  buildCombos();renderStats();renderLow();renderRequirement();
+  renderInventory();renderMoves();      // Stock Log now lives inside the Inventory tab
+  renderPurchase();renderSalesTable();
   setTimeout(buildCharts,30);
 }
 
@@ -2314,7 +2357,7 @@ function renderInventory(){
         <td class="price-cell"><span class="p">${money(ebCostOf(i),0)}</span><span class="pm">${same(i['Price Mode'],'Manual')?'manual':'+'+MARGIN_PCT+'%'}</span></td>
         <td><div class="row-acts">
           <button class="act-btn" onclick="openMove('${esc(ic)}')">Move</button>
-          <button class="act-btn" onclick="openMins('${esc(ic)}')">Levels</button>
+          <button class="act-btn" onclick="openMins('${esc(ic)}')">Min Qty</button>
           <button class="act-btn primary" onclick="openItemForm('${esc(ic)}')">Edit</button>
         </div></td></tr>`;
     }).join(''):`<tr><td colspan="${locs.length+8}" class="tbl-empty">No items match these filters.</td></tr>`)+'</tbody>';
@@ -3283,12 +3326,12 @@ function renderMoves(){
 function refreshAll(){
   buildCombos();
   if(role==='admin'){
-    renderStats();renderLow();renderRequirement();renderInventory();
-    renderKitTable();renderCentreTable();renderOrders();renderPurchase();renderMoves();renderSalesTable();
+    renderStats();renderLow();renderRequirement();renderInventory();renderMoves();
+    renderKitTable();renderCentreTable();renderOrders();renderPurchase();renderSalesTable();
     if(byId('panel-summary').classList.contains('active'))setTimeout(buildCharts,20);
   }
-  if(currentScreen==='kits')renderKits();
-  if(currentScreen==='centres')renderCentres();
+  if(currentScreen==='kits'){renderKits();if(role==='admin'){renderKitTable();renderOrders();}}
+  if(currentScreen==='centres'){renderCentres();if(role==='admin')renderCentreTable();}
   if(currentScreen==='centre')renderCentreDetail();
   if(currentScreen==='sell'){renderSellCentres();renderPickList();renderCart();}
   if(currentScreen==='bills')renderBills();
