@@ -554,7 +554,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="page-sub" id="kitsSub">Component list and cost for every ElectroBotics kit</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <div class="filter-group"><label>Buildable from</label>
+        <div class="filter-group"><label>Can build from</label>
           <select id="kitsLocFilter" onchange="renderKits()"></select>
         </div>
         <button class="btn-add" id="kitsAddBtn" onclick="openKitForm()" style="display:none;">+ New Kit</button>
@@ -853,7 +853,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
           <div class="page-sub" id="poSub"></div>
         </div>
         <div class="po-totals">
-          <div class="po-tot"><div class="n" id="poLines">0</div><div class="l">lines</div></div>
+          <div class="po-tot"><div class="n" id="poLines">0</div><div class="l">modules</div></div>
           <div class="po-tot"><div class="n" id="poUnits">0</div><div class="l">units</div></div>
           <div class="po-tot"><div class="n accent" id="poValue">₹0</div><div class="l">vendor value</div></div>
         </div>
@@ -937,7 +937,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
           <div class="form-grid" style="gap:0 14px;">
             <div class="form-row"><label>Opening stock at</label><select id="i_OpenLoc"></select></div>
             <div class="form-row"><label>Opening quantity</label><input type="number" step="1" id="i_OpenQty" placeholder="0"></div>
-            <div class="form-row"><label>Default Min Qty <small style="text-transform:none;letter-spacing:0;">— starting reorder level for each centre</small></label><input type="number" step="1" id="i_Min" placeholder="e.g. 10"></div>
+            <div class="form-row"><label>Default Min Qty <small style="text-transform:none;letter-spacing:0;">— starting Min Qty for each centre</small></label><input type="number" step="1" id="i_Min" placeholder="e.g. 10"></div>
             <div class="form-row"><label>Date</label><input type="date" id="i_Date"></div>
           </div>
         </div>
@@ -949,7 +949,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
             <button class="act-btn primary" onclick="fromItemModal('move')">⇄ Move / receive stock</button>
-            <button class="act-btn" onclick="fromItemModal('min')">Set centre reorder levels</button>
+            <button class="act-btn" onclick="fromItemModal('min')">Set centre Min Qty</button>
           </div>
         </div>
         <div class="form-row full"><label>Comments</label><textarea id="i_Notes" rows="2" placeholder="Vendor notes, lead time, alternates…"></textarea></div>
@@ -1055,10 +1055,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   </div>
 </div>
 
-<!-- Per-centre reorder levels -->
+<!-- Per-centre Min Qty -->
 <div class="modal-overlay" id="minModal">
   <div class="modal-card">
-    <div class="modal-head"><h3>Reorder Levels</h3><button class="modal-close" onclick="closeModal('minModal')">&times;</button></div>
+    <div class="modal-head"><h3>Min Qty per Centre</h3><button class="modal-close" onclick="closeModal('minModal')">&times;</button></div>
     <div class="modal-body">
       <div class="modal-sub" id="minSub"></div>
       <div class="hint">Min Qty per centre for this module. A centre is flagged <b>Low</b> when its stock drops to or below its level. Blank falls back to the item's default.</div>
@@ -1223,7 +1223,7 @@ const GOOGLE_CLIENT_ID  = '1060454695062-vf1ajfodb8siesq7fk906rpind6fjc72.apps.g
 // Access is driven by the "Users" tab of the sheet (Email + Role columns):
 //   Role 'admin' → everything.   Role 'tutor' → Kits + Centres + Sell + Bills.
 const CURRENCY = '₹';
-const LOW_STOCK_DEFAULT = 5;    // reorder level used when neither the centre nor the item sets one
+const LOW_STOCK_DEFAULT = 5;    // Min Qty used when neither the centre nor the item sets one
 const MARGIN_PCT  = 40;         // ElectroBotics Cost = total cost + this % ON COST
 const PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 5 = nearest ₹5)
 // ══════════════════════════════════════════════════
@@ -1354,7 +1354,7 @@ function sellingCentres(){return CENTRES.filter(c=>!isCentral(c)&&isActiveC(c))}
 function allLocations(){const c=centralCentre();return (c?[c]:[]).concat(sellingCentres())}
 /**
  * Every location that holds stock and can run low — the central store included.
- * It has its own reorder level and gets flagged like any other location; the one
+ * It has its own Min Qty and gets flagged like any other location; the one
  * difference is that it can't transfer from itself, so its advice is always Buy.
  */
 function stockCentres(){return allLocations()}
@@ -1372,7 +1372,7 @@ function minAt(itemCode,centreCode){
 }
 function totalQty(itemCode){return CSTOCK.filter(r=>same(r['Item Code'],itemCode)).reduce((s,r)=>s+num(r.Qty),0)}
 function centralQty(itemCode){return qtyAt(itemCode,centralCode())}
-/** Company reorder level = the sum of what every location wants to hold, central included. */
+/** Company Min Qty = the sum of what every location wants to hold, central included. */
 function companyMin(itemCode){return stockCentres().reduce((s,c)=>s+minAt(itemCode,c['Centre Code']),0)}
 
 function stateAt(itemCode,centreCode){
@@ -1392,7 +1392,7 @@ function qtyCellClass(itemCode,centreCode){
 }
 
 /**
- * For every teaching centre below its reorder level, work out whether the
+ * For every teaching centre below its Min Qty, work out whether the
  * central store can cover the gap (transfer) or whether it has to be bought.
  * Central stock is allocated greedily, worst shortfall first, so the advice
  * across rows adds up to what you actually have.
@@ -1743,7 +1743,7 @@ function renderKits(){
   if(!byId('kitsLocFilter').value)setSelCode('kitsLocFilter',centralCode());
   const loc=String(byId('kitsLocFilter').value||'').split(' — ')[0]||centralCode();
   const g=byId('kitGrid');
-  byId('kitsSub').textContent=KITS.length+' kits · buildable from '+centreName(loc)+(demoMode?' · demo data':'');
+  byId('kitsSub').textContent=KITS.length+' kits · can build from '+centreName(loc)+' stock'+(demoMode?' · demo data':'');
   if(KITS.length===0){g.innerHTML='<div class="tbl-empty">No kits yet.'+(role==='admin'?' Use “+ New Kit” to add one.':'')+'</div>';return}
   g.innerHTML=KITS.map(k=>{
     const s=kitStats(k['Kit Code'],loc);
@@ -1758,7 +1758,7 @@ function renderKits(){
         <span class="kit-count">${s.count} component${s.count===1?'':'s'}</span>
         <span class="kit-cost">${money0(s.cost)}</span>
       </div>
-      <div class="kit-buildable"><span class="badge ${bClass}">${s.buildable} buildable</span>${s.short?' <span class="badge out">'+s.short+' short</span>':''}</div>
+      <div class="kit-buildable"><span class="badge ${bClass}">Can build ${s.buildable}</span>${s.short?' <span class="badge out">'+s.short+' short</span>':''}</div>
     </div>`;
   }).join('');
 }
@@ -1769,7 +1769,7 @@ function openKit(code){
   kdLoc=String(byId('kitsLocFilter').value||'').split(' — ')[0]||centralCode();
   const k=kitByCode(code);if(!k)return;
   byId('kdName').textContent=k['Kit Name'];
-  byId('kdSub').textContent=k['Kit Code']+(k.Description?' · '+k.Description:'')+' · buildable from '+centreName(kdLoc);
+  byId('kdSub').textContent=k['Kit Code']+(k.Description?' · '+k.Description:'')+' · can build from '+centreName(kdLoc)+' stock';
   byId('kdActions').innerHTML=role==='admin'
     ? `<button class="act-btn" onclick="openKitForm('${esc(code)}')">Edit kit</button><button class="act-btn primary" onclick="openBom('${esc(code)}')">Edit components</button>`
     : '';
@@ -1777,7 +1777,7 @@ function openKit(code){
   byId('kdStats').innerHTML=`
     <div class="stat-card accent"><div class="stat-label">Component Cost</div><div class="stat-value">${money0(s.cost)}</div><div class="stat-sub">total cost, all ${s.count} modules</div></div>
     <div class="stat-card green"><div class="stat-label">At EB Price</div><div class="stat-value">${money0(s.ebCost)}</div><div class="stat-sub">${s.cost>0?'margin '+money0(s.ebCost-s.cost):'—'}</div></div>
-    <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Buildable Now</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">from ${esc(centreName(kdLoc))} stock</div></div>
+    <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Kits We Can Build</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">complete kits from ${esc(centreName(kdLoc))} stock</div></div>
     <div class="stat-card amber"><div class="stat-label">Short Modules</div><div class="stat-value">${s.short}</div><div class="stat-sub">not enough for one kit</div></div>`;
 
   const rows=bomFor(code);
@@ -1785,7 +1785,7 @@ function openKit(code){
   // stock is deployed, so showing it here would only invite the wrong conclusion.
   byId('kdTable').innerHTML=`<thead><tr>
       <th>Item Code</th><th>Module</th><th>Supplier</th><th class="num">Qty / Kit</th>
-      <th class="num">At ${esc(centreName(kdLoc))}</th><th class="num">Builds</th>
+      <th class="num">At ${esc(centreName(kdLoc))}</th><th class="num">Kits Covered</th>
       <th class="num">Unit Cost</th><th class="num">Line Cost</th><th>Status</th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>{
       const it=itemByCode(r['Item Code']);const q=num(r.Qty)||1;
@@ -1832,7 +1832,7 @@ function renderCentres(){
       <div class="centre-nums">
         <div class="centre-num"><div class="n">${s.units}</div><div class="l">units</div></div>
         <div class="centre-num"><div class="n">${money0(s.value)}</div><div class="l">value</div></div>
-        ${central?'':`<div class="centre-num"><div class="n ${s.out?'bad':s.low?'warn':'good'}">${s.out+s.low}</div><div class="l">need stock</div></div>`}
+        <div class="centre-num"><div class="n ${s.out?'bad':s.low?'warn':'good'}">${s.out+s.low}</div><div class="l">need stock</div></div>
       </div>
     </div>`;
   }).join('');
@@ -1857,8 +1857,8 @@ function renderCentreDetail(){
   byId('cdStats').innerHTML=`
     <div class="stat-card accent"><div class="stat-label">Stock Value</div><div class="stat-value" style="font-size:23px;">${money0(s.value)}</div><div class="stat-sub">${s.units} units · ${s.skus} modules held</div></div>
     <div class="stat-card ${s.out?'red':'green'}"><div class="stat-label">Out of Stock</div><div class="stat-value">${s.out}</div><div class="stat-sub">modules at zero here</div></div>
-    <div class="stat-card ${s.low?'amber':'green'}"><div class="stat-label">Below Level</div><div class="stat-value">${s.low}</div><div class="stat-sub">at or under reorder level</div></div>
-    <div class="stat-card purple"><div class="stat-label">Kits Buildable</div><div class="stat-value">${KITS.reduce((n,k)=>n+kitStats(k['Kit Code'],code).buildable,0)}</div><div class="stat-sub">across all ${KITS.length} kits, from stock here</div></div>`;
+    <div class="stat-card ${s.low?'amber':'green'}"><div class="stat-label">Below Min Qty</div><div class="stat-value">${s.low}</div><div class="stat-sub">at or under their Min Qty here</div></div>
+    <div class="stat-card purple"><div class="stat-label">Kits We Can Build</div><div class="stat-value">${KITS.reduce((n,k)=>n+kitStats(k['Kit Code'],code).buildable,0)}</div><div class="stat-sub">across all ${KITS.length} kits, from stock here</div></div>`;
 
   const analysis=lowAnalysis();
   const mine=analysis.rows.filter(r=>same(r.centreCode,code));
@@ -1879,7 +1879,7 @@ function renderCentreDetail(){
         <td>${badge(st)}</td>
         ${showAdvice?`<td>${row?adviceHtml(row):'<span class="advice ok">OK</span>'}</td>`:''}
         ${role==='admin'?`<td><button class="act-btn primary" onclick="openMove('${esc(ic)}','${esc(code)}')">Move</button></td>`:''}</tr>`;
-    }).join(''):`<tr><td colspan="10" class="tbl-empty">${cdView==='short'?'Nothing below its reorder level here. 🎉':'No stock recorded at this location yet.'}</td></tr>`)+'</tbody>';
+    }).join(''):`<tr><td colspan="10" class="tbl-empty">${cdView==='short'?'Nothing below its Min Qty here. 🎉':'No stock recorded at this location yet.'}</td></tr>`)+'</tbody>';
 
   const mv=MOVES.filter(m=>same(m.From,code)||same(m.To,code)).slice().reverse();
   byId('cdMoveSummary').textContent=mv.length+' movements recorded';
@@ -2124,9 +2124,9 @@ function renderLow(){
   byId('lowSummary').textContent=`${cShort.length} centre-module gaps · ${cShort.filter(r=>r.advice==='transfer').length} fixable by transfer · ${a.company.filter(r=>r.short>0).length} modules to buy`;
 
   if(lowView==='company'){
-    byId('lowHint').innerHTML='Company-wide view: total stock across <b>every</b> location against the sum of all centre reorder levels. What shows here genuinely has to be <b>purchased</b> — moving stock around won\'t fix it.';
+    byId('lowHint').innerHTML='Company-wide view: total stock across <b>every</b> location against the sum of every location\'s <b>Min Qty</b>. What shows here genuinely has to be <b>purchased</b> — moving stock around won\'t fix it.';
     const rows=a.company.filter(r=>r.short>0||r.state==='out');
-    byId('lowTable').innerHTML=`<thead><tr><th>Item Code</th><th>Module</th><th>Supplier</th><th class="num">Total Stock</th><th class="num">Central</th><th class="num">Company Level</th><th class="num">Buy</th><th class="num">Est. Cost</th><th></th></tr></thead><tbody>`+
+    byId('lowTable').innerHTML=`<thead><tr><th>Item Code</th><th>Module</th><th>Supplier</th><th class="num">Total Stock</th><th class="num">Central</th><th class="num">Min Qty (All)</th><th class="num">Buy</th><th class="num">Est. Cost</th><th></th></tr></thead><tbody>`+
       (rows.length?rows.map(r=>`<tr${r.short>0?' style="background:var(--red-light)"':''}>
         <td class="mono">${esc(r.code)}</td><td>${esc(r.name)}</td><td>${esc(r.supplier)}</td>
         <td class="qty-cell ${r.state==='out'?'out':r.state==='low'?'low':''}">${r.total}</td>
@@ -2137,10 +2137,10 @@ function renderLow(){
     return;
   }
 
-  byId('lowHint').innerHTML='Per-location view: every location — the <b>central store included</b> — against its own reorder level. Where central can cover a centre\'s gap you get a <b>transfer</b>; central\'s own gap is always a <b>purchase</b>, since it can\'t resupply itself.';
+  byId('lowHint').innerHTML='Per-location view: every location — the <b>central store included</b> — against its own <b>Min Qty</b>. Where central can cover a centre\'s gap you get a <b>transfer</b>; central\'s own gap is always a <b>purchase</b>, since it can\'t resupply itself.';
   const filt=selCode('lowCentreFilter');
   const rows=cShort.filter(r=>!filt||same(r.centreCode,filt));
-  byId('lowTable').innerHTML=`<thead><tr><th>Centre</th><th>Item Code</th><th>Module</th><th class="num">Here</th><th class="num">Level</th><th class="num">Short</th><th class="num">Central Has</th><th>Do this</th><th></th></tr></thead><tbody>`+
+  byId('lowTable').innerHTML=`<thead><tr><th>Centre</th><th>Item Code</th><th>Module</th><th class="num">Here</th><th class="num">Min Qty</th><th class="num">Short</th><th class="num">Central Has</th><th>Do this</th><th></th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>`<tr${r.state==='out'?' style="background:var(--red-light)"':''}>
       <td><span class="loc-pill ${r.isCentral?'hq':''}" style="${r.isCentral?'':`background:${esc(centreColor(r.centre))}22;color:${esc(centreColor(r.centre))}`}">${esc(r.centre['Centre Name'])}</span></td>
       <td class="mono">${esc(r.code)}</td><td>${esc(r.item['Module Name'])}</td>
@@ -2149,7 +2149,7 @@ function renderLow(){
       <td class="num"><b>${r.short}</b></td><td class="num">${r.centralQty}</td>
       <td>${adviceHtml(r)}</td>
       <td><button class="act-btn primary" onclick="openMove('${esc(r.code)}','${esc(r.centreCode)}')">Move</button></td></tr>`).join('')
-    :'<tr><td colspan="9" class="tbl-empty">No centre is below its reorder level. 🎉</td></tr>')+'</tbody>';
+    :'<tr><td colspan="9" class="tbl-empty">No location is below its Min Qty. 🎉</td></tr>')+'</tbody>';
 }
 
 // ─── Module requirement from open kit orders (company-wide) ─────
@@ -2296,7 +2296,7 @@ function renderInventory(){
   byId('invTable').innerHTML=`<thead><tr>
       <th>Item Code</th><th>Module</th><th>Supplier</th>
       ${locs.map(c=>`<th class="num" title="${esc(c['Centre Code'])}">${esc(c['Centre Name'])}</th>`).join('')}
-      <th class="num">Total</th><th class="num">Level</th><th>Status</th><th class="price-cell">EB Cost</th><th></th>
+      <th class="num">Total</th><th class="num">Min Qty</th><th>Status</th><th class="price-cell">EB Cost</th><th></th>
     </tr></thead><tbody>`+
     (invRows.length?invRows.map(i=>{
       const ic=i['Item Code'],tq=totalQty(ic),cm=companyMin(ic);
@@ -2777,7 +2777,7 @@ function applyMoveLocally(b,moveId){
     'Item Code':c,'Qty':String(q),'Ref':b.ref||'','By':b.by||'','Notes':b.note||''});
 }
 
-// ─── Per-centre reorder levels ──────────────────────────────────
+// ─── Per-centre Min Qty ─────────────────────────────────────────
 let minItem=null;
 function openMins(code){
   if(role!=='admin')return;
@@ -2889,7 +2889,7 @@ async function deleteCentre(){
 
 // ─── Kits (admin) ───────────────────────────────────────────────
 function renderKitTable(){
-  byId('kitTable').innerHTML=`<thead><tr><th>Kit Code</th><th>Kit Name</th><th>Description</th><th class="num">Components</th><th class="num">Cost</th><th class="num">EB Price</th><th class="num">Buildable</th><th>Status</th><th></th></tr></thead><tbody>`+
+  byId('kitTable').innerHTML=`<thead><tr><th>Kit Code</th><th>Kit Name</th><th>Description</th><th class="num">Components</th><th class="num">Cost</th><th class="num">EB Price</th><th class="num">Can Build</th><th>Status</th><th></th></tr></thead><tbody>`+
     (KITS.length?KITS.map(k=>{
       const s=kitStats(k['Kit Code'],'');
       return `<tr><td class="mono"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(kitColor(k))};margin-right:7px;"></span>${esc(k['Kit Code'])}</td>
@@ -2990,7 +2990,7 @@ function recalcBom(){
   if(buildable===Infinity)buildable=0;
   byId('bomCost').innerHTML=`<div class="cost-line"><span>Total component cost / kit</span><span>${money(cost)}</span></div>
     <div class="cost-line"><span>At ElectroBotics price</span><span>${money(eb)}</span></div>
-    <div class="cost-line total"><span>Buildable from central store</span><span class="v">${buildable} kits</span></div>`;
+    <div class="cost-line total"><span>Can build from central store</span><span class="v">${buildable} kits</span></div>`;
 }
 async function saveBom(){
   const msg=byId('b_Msg'),btn=byId('b_SaveBtn');
@@ -3074,9 +3074,9 @@ async function deleteOrder(){
 // centre — so it is deliberately excluded from availability.
 //   • kit orders — Σ over open/ordered orders of (kits ordered × BOM qty).
 //                  20 kits needing 2 IR sensors each = 40.
-//   • centre top-up — Σ over teaching centres of (reorder level − what they hold),
+//   • centre top-up — Σ over teaching centres of (Min Qty − what they hold),
 //                  i.e. what central still has to send them, plus central's own
-//                  reorder level if you've set one.
+//                  Min Qty if you've set one.
 // Needed = the two added; Order Qty = Needed − central store stock, floored at 0.
 // The centre side is a GAP not a gross level: a centre wanting 10 and holding 8
 // needs 2, and its own 8 are counted nowhere else.
@@ -3106,7 +3106,8 @@ function kitGrossDemand(){
 function centreTopUp(code){
   return sellingCentres().reduce((s,c)=>s+Math.max(minAt(code,c['Centre Code'])-qtyAt(code,c['Centre Code']),0),0);
 }
-function purchaseList(){
+function purchaseList(mode){
+  const m=mode||poMode;
   const kitNeed=kitGrossDemand();
   const codes=uniq(INV.map(i=>i['Item Code']).concat(Object.keys(kitNeed)));
   const rows=[];
@@ -3114,7 +3115,7 @@ function purchaseList(){
     const it=itemByCode(code);
     const forKits=kitNeed[code]||0;                       // gross, e.g. 20 kits × 2 = 40
     const forCentres=it?(centreTopUp(code)+minAt(code,centralCode())):0;  // gap + central's own buffer
-    const needed=(poMode==='centre'?0:forKits)+(poMode==='kit'?0:forCentres);
+    const needed=(m==='centre'?0:forKits)+(m==='kit'?0:forCentres);
     if(needed<=0)return;
     const stock=centralQty(code);                         // central store only
     const suggested=Math.max(needed-stock,0);
@@ -3139,23 +3140,24 @@ function purchaseList(){
 
 function renderPurchase(){
   const p=purchaseList();
-  const kitNeed=kitGrossDemand();
-  const kitN=Object.keys(kitNeed).length;
-  const cenN=INV.filter(i=>(centreTopUp(i['Item Code'])+minAt(i['Item Code'],centralCode()))>centralQty(i['Item Code'])).length;
+  // Each chip counts the modules you would actually order under that filter — the
+  // same rule the table below uses — so the chip and the row count always agree.
+  const kitN=purchaseList('kit').rows.length;
+  const cenN=purchaseList('centre').rows.length;
   byId('poChips').innerHTML=`
-    <button class="chip ${poMode==='both'?'active':''}" onclick="setPoMode('both')">Both</button>
-    <button class="chip ${poMode==='kit'?'active':''}" onclick="setPoMode('kit')">For kit orders ${kitN}</button>
-    <button class="chip ${poMode==='centre'?'active':''}" onclick="setPoMode('centre')">For centre stock ${cenN}</button>
+    <button class="chip ${poMode==='both'?'active':''}" onclick="setPoMode('both')">Both ${purchaseList('both').rows.length} modules</button>
+    <button class="chip ${poMode==='kit'?'active':''}" onclick="setPoMode('kit')">For kit orders ${kitN} modules</button>
+    <button class="chip ${poMode==='centre'?'active':''}" onclick="setPoMode('centre')">For centre stock ${cenN} modules</button>
     <span class="chip-total">${p.vendors.length} vendor${p.vendors.length===1?'':'s'}</span>`;
 
   const kitsSummary=ORDERS.filter(o=>same(o.Status,'Open')||same(o.Status,'Ordered'))
     .map(o=>{const k=kitByCode(o['Kit Code']);return num(o.Qty)+' × '+(k?k['Kit Name']:o['Kit Code'])}).join(', ');
   byId('poHint').innerHTML=
     (poMode==='centre'
-      ? '<b>For Centres</b> is what each centre still needs to reach its reorder level, plus the central store\'s own buffer.'
+      ? '<b>For Centres</b> is what each centre still needs to reach its <b>Min Qty</b>, plus the central store\'s own Min Qty.'
       : poMode==='kit'
       ? '<b>For Kits</b> is the gross requirement of your open kit orders: kits ordered × qty per kit.'
-      : '<b>For Kits</b> = kits ordered × qty per kit. <b>For Centres</b> = what centres still need to reach their reorder levels. '+
+      : '<b>For Kits</b> = kits ordered × qty per kit. <b>For Centres</b> = what every location still needs to reach its <b>Min Qty</b>. '+
         'They add up to <b>Needed</b>, and only <b>central store</b> stock is subtracted.')+
     '<br>Stock already at a teaching centre is <b>not</b> counted as available — it is deployed, not on the shelf to build or send from.'+
     (kitsSummary&&poMode!=='centre'?'<br>Open orders: '+esc(kitsSummary):'');
@@ -3170,7 +3172,7 @@ function renderPurchase(){
     : 'Nothing to order right now';
 
   if(p.vendors.length===0){
-    byId('poVendors').innerHTML='<div class="po-empty">Nothing to order — stock already covers every open kit order and every reorder level. 🎉</div>';
+    byId('poVendors').innerHTML='<div class="po-empty">Nothing to order — central store stock already covers every open kit order and every Min Qty. 🎉</div>';
     return;
   }
 
@@ -3580,7 +3582,7 @@ function waLowStock(){
   }
   const filt=selCode('lowCentreFilter');
   const rows=a.rows.filter(r=>r.short>0&&(!filt||same(r.centreCode,filt)));
-  if(!rows.length){alert('No centre is below its reorder level.');return}
+  if(!rows.length){alert('No location is below its Min Qty.');return}
   const L=['*ElectroBotics — Stock to top up*',''];
   const byCentre={};
   rows.forEach(r=>{(byCentre[r.centreCode]=byCentre[r.centreCode]||[]).push(r)});
@@ -3600,7 +3602,7 @@ function waCentreLow(code){
   const a=lowAnalysis();
   const rows=a.rows.filter(r=>same(r.centreCode,code)&&r.short>0);
   const c=centreByCode(code);
-  if(!rows.length){alert(centreName(code)+' is above its reorder level on everything.');return}
+  if(!rows.length){alert(centreName(code)+' is at or above its Min Qty on everything.');return}
   const L=['*ElectroBotics — '+centreName(code)+'*','','Stock to top up:',''];
   rows.forEach((r,i)=>{
     L.push(`${i+1}. ${r.item['Module Name']}`);
@@ -3663,7 +3665,7 @@ function exportInventory(){
       'ElectroBotics Cost':ebCostOf(i),'Price Mode':same(i['Price Mode'],'Manual')?'Manual':'Auto ('+MARGIN_PCT+'%)',Unit:i.Unit||''};
     locs.forEach(l=>{row[l['Centre Name']]=qtyAt(c,l['Centre Code'])});
     locs.filter(l=>!isCentral(l)).forEach(l=>{row['Min · '+l['Centre Name']]=minAt(c,l['Centre Code'])});
-    row['Total Qty']=totalQty(c);row['Company Level']=companyMin(c);row.Status=companyState(c);
+    row['Total Qty']=totalQty(c);row['Min Qty (All)']=companyMin(c);row.Status=companyState(c);
     row['Stock Value']=+(totalQty(c)*totalCostOf(i)).toFixed(2);
     row.Date=i.Date||'';row.Comments=i.Comments||'';
     return row;
@@ -3681,11 +3683,11 @@ function exportLow(){
   const a=lowAnalysis();
   if(lowView==='company'){
     xlsx(a.company.map(r=>({'Item Code':r.code,'Module Name':r.name,Supplier:r.supplier,'Total Stock':r.total,
-      'Central Store':r.central,'Company Level':r.min,'Buy':r.short,'Unit Cost':+r.unit.toFixed(2),
+      'Central Store':r.central,'Min Qty (All)':r.min,'Buy':r.short,'Unit Cost':+r.unit.toFixed(2),
       'Est. Cost':+r.buyCost.toFixed(2)})),'Purchase','ElectroBotics_PurchaseList');
   }else{
     xlsx(a.rows.map(r=>({Centre:r.centre['Centre Name'],'Item Code':r.code,'Module Name':r.item['Module Name'],
-      'Qty Here':r.qty,'Reorder Level':r.min,Short:r.short,'Central Has':r.centralQty,
+      'Qty Here':r.qty,'Min Qty':r.min,Short:r.short,'Central Has':r.centralQty,
       'Move From Central':r.fromCentral,'Buy':r.toBuy,'Buy Cost':+r.buyCost.toFixed(2)})),
       'LowStock','ElectroBotics_LowStock');
   }
@@ -3698,7 +3700,7 @@ function exportKitBom(){
     const q=num(b.Qty),have=qtyAt(b['Item Code'],loc);
     return {Kit:k['Kit Name'],'Item Code':b['Item Code'],'Module Name':it['Module Name']||'',
       Supplier:it.Supplier||'',SKU:it.SKU||'','Qty per Kit':q,
-      ['At '+centreName(loc)]:have,'Builds':q?Math.floor(have/q):0,
+      ['At '+centreName(loc)]:have,'Kits Covered':q?Math.floor(have/q):0,
       'Short By':Math.max(q-have,0),
       'Unit Cost':+totalCostOf(it).toFixed(2),'Line Cost':+(totalCostOf(it)*q).toFixed(2),
       'EB Cost':ebCostOf(it)};
