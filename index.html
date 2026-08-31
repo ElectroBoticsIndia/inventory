@@ -95,10 +95,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 
 /* ─── Charts / cards ─── */
 .charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;margin-bottom:28px}
+.charts-grid>*{min-width:0}
 .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:28px}
 .charts-grid .chart-card{margin-bottom:0}
 .chart-title{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
-.chart-container{position:relative;min-height:280px}
+.chart-container{position:relative;height:300px;min-height:300px;width:100%;min-width:0}
+.chart-container canvas{max-width:100%}
 .card-toggle{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .card-toggle-title{flex:1 1 auto;min-width:0}
 .card-summary{display:block;font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-light);margin:4px 0 0}
@@ -132,7 +134,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .filter-group select:focus,.filter-group input:focus{border-color:var(--accent)}
 .filter-clear{font-family:var(--font-mono);font-size:11px;font-weight:600;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--text-dim);cursor:pointer;transition:all .2s}
 .filter-clear:hover{border-color:var(--red);color:var(--red)}
-.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;
+  background:
+    linear-gradient(to right,var(--surface) 30%,rgba(255,255,255,0)),
+    linear-gradient(to left,var(--surface) 30%,rgba(255,255,255,0)) 100% 0,
+    radial-gradient(farthest-side at 0 50%,rgba(0,55,58,.13),rgba(0,0,0,0)),
+    radial-gradient(farthest-side at 100% 50%,rgba(0,55,58,.13),rgba(0,0,0,0)) 100% 0;
+  background-repeat:no-repeat;background-color:var(--surface);
+  background-size:34px 100%,34px 100%,13px 100%,13px 100%;
+  background-attachment:local,local,scroll,scroll}
 .data-table{width:100%;border-collapse:collapse;font-size:13px}
 .data-table th{font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;padding:11px 14px;text-align:left;border-bottom:2px solid var(--border);background:var(--surface-alt);white-space:nowrap}
 .data-table td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -293,9 +303,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 }
 @media(max-width:600px){
   .app{padding:16px 12px 40px}
-  .site-header{padding:10px 14px}
-  .header-right{gap:6px}
-  .nav-btn{padding:7px 10px}
+  .site-header{padding:10px 12px}
+  .header-inner{gap:8px}
+  /* the brand block gives way; the nav buttons never shrink or wrap */
+  .header-left{min-width:0;flex:1 1 auto;overflow:hidden;gap:9px}
+  .header-logo{width:36px;height:36px}
+  .header-text{min-width:0;overflow:hidden}
+  .header-brand{max-width:100%;height:20px}
+  .header-right{gap:5px;flex:0 0 auto}
+  .nav-btn{padding:7px 9px}
   .nav-btn span{display:none}
   .stats-grid{grid-template-columns:1fr 1fr;gap:12px}
   .stat-card{padding:16px}
@@ -313,12 +329,97 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   .modal-foot{gap:8px}
   .modal-foot .btn-save,.modal-foot .btn-cancel,.modal-foot .btn-del{flex:1 1 0;text-align:center}
   .page-head{align-items:flex-start}
+
+  /* Tables keep readable column widths and scroll sideways instead of
+     squeezing every module name onto four lines. */
+  .table-wrap .data-table{min-width:600px}
+  .table-wrap.narrow .data-table{min-width:0}
+  .data-table th{padding:10px 11px}
+  .data-table td{padding:10px 11px}
+
+  /* Comfortable tap targets — nothing a finger has to hit is under 36px */
+  .chip,.act-btn,.btn-download,.btn-add,.back-link,.nav-btn,.filter-clear,.view-tab,.sub-tab{
+    min-height:36px;display:inline-flex;align-items:center;justify-content:center}
+  .chip{padding:8px 14px}
+  .chip-total{margin-left:0;width:100%;min-height:0;display:block}
+  .act-btn{padding:8px 13px}
+  .view-tab{padding:9px 13px}
+  .sub-tab{padding:9px 15px}
+  .dash-tab{padding:11px 13px;min-height:40px}
+  .row-acts{gap:8px}
+  .centre-edit{min-height:36px;padding:8px 14px}
+
+  /* small ×/checkbox controls get a finger-sized hit area without growing visually */
+  .modal-close{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  .cart-del{min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  .picker-clear{width:34px;height:34px;display:none;align-items:center;justify-content:center;right:4px}
+  .picker-clear.on{display:flex}
+  input.po-chk{width:22px;height:22px}
+  .manual-toggle input[type=checkbox]{width:20px;height:20px;flex:0 0 auto}
+  .manual-toggle{min-height:36px;display:flex;align-items:center;gap:9px}
+  .min-inp{min-height:38px;width:84px}
+  .po-qty{min-height:38px}
+
+  /* Purchase header: totals sit under the title, spread across the row */
+  .po-head{flex-direction:column;align-items:stretch}
+  .po-totals{gap:0;justify-content:space-between;width:100%;
+    border-top:1px solid var(--border);padding-top:12px}
+  .po-tot{text-align:left;flex:1}
+  .po-tot:last-child{text-align:right}
+
+  .charts-grid{gap:14px}
+  .chart-container{height:265px;min-height:265px}
+
+  /* the Stock-by-centre / Costs toggle was being clipped at 390px */
+  .table-actions{flex-wrap:wrap}
+  .table-actions .view-toggle{width:100%}
+  .table-actions .view-toggle .view-tab{flex:1;text-align:center}
+  .view-tab{min-height:36px}
+  .po-qty{min-height:36px;width:72px}
+  .modal-card{max-height:92vh}
+  .page-title{font-size:19px}
+  .centre-nums{gap:12px}
+}
+
+/* Any touch device — a 768px tablet gets finger-sized targets too, not just phones */
+@media (hover:none) and (pointer:coarse){
+  .nav-btn,.act-btn,.btn-download,.btn-add,.back-link,.chip,.view-tab,.sub-tab,.filter-clear,
+  .btn-save,.btn-cancel,.btn-del{min-height:36px;display:inline-flex;align-items:center;justify-content:center}
+  .chip-total{min-height:0;display:block}
+  .dash-tab{min-height:40px}
+  .modal-close{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  .cart-del{min-width:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;padding:0}
+  input.po-chk{width:22px;height:22px}
+  .manual-toggle{min-height:36px}
+  .manual-toggle input[type=checkbox]{width:20px;height:20px}
+  .po-qty,.min-inp{min-height:38px}
+  .picker-clear{width:34px;height:34px;display:none;align-items:center;justify-content:center;right:4px}
+  .picker-clear.on{display:flex}
+  .centre-edit{min-height:36px;padding:8px 14px}
+}
+
+@media(max-width:380px){
+  .chart-card{padding:16px 14px}
+  .header-tagline{display:none}
+  .header-brand{height:18px}
+  .stats-grid{grid-template-columns:1fr}
+  .stat-value{font-size:26px}
+  .po-totals{flex-wrap:wrap;gap:10px 0}
+  .po-tot{flex:0 0 50%}
+  .po-tot:last-child{text-align:left}
 }
 /* ─── Centres ─── */
 .centre-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
 .centre-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);cursor:pointer;transition:all .25s;position:relative;overflow:hidden}
 .centre-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
 .centre-card.central{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-light) 0%,var(--surface) 62px)}
+.centre-card.inactive{opacity:.62}
+.centre-edit{position:absolute;top:12px;right:12px;z-index:2;font-family:var(--font-mono);font-size:10px;font-weight:700;
+  padding:5px 11px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text-dim);cursor:pointer;
+  opacity:0;transition:all .18s}
+.centre-card:hover .centre-edit{opacity:1}
+.centre-edit:hover{border-color:var(--accent);color:var(--accent)}
+@media (hover:none){.centre-edit{opacity:1}}
 .centre-stripe{position:absolute;left:0;top:0;bottom:0;width:5px}
 .centre-code{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-light);margin-bottom:6px}
 .centre-name{font-size:17px;font-weight:700;margin-bottom:4px;line-height:1.3}
@@ -330,7 +431,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .centre-num .l{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-light);margin-top:2px}
 
 /* location pills in tables */
-.loc-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--surface-alt);color:var(--text-dim);white-space:nowrap}
+.loc-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--surface-alt);color:var(--text-dim);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .loc-pill.hq{background:var(--accent-light);color:var(--accent-dark)}
 .loc-pill.short{background:#fdeae5;color:#c0472a}
 .loc-cells{display:flex;gap:5px;flex-wrap:wrap}
@@ -373,9 +474,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .min-row .cq{font-family:var(--font-mono);font-size:11px;color:var(--text-light);width:78px;text-align:right}
 .min-inp{width:74px;font-family:var(--font-mono);font-size:13px;padding:7px;border:1px solid var(--border);border-radius:8px;text-align:center;outline:none}
 .min-inp:focus{border-color:var(--accent)}
-.sell-centre{display:flex;align-items:center;gap:10px;background:var(--accent-light);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.sell-centre{display:flex;align-items:center;gap:10px;background:var(--accent-light);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;margin-bottom:14px;flex-wrap:wrap}
 .sell-centre label{font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--accent-dark);white-space:nowrap}
-.sell-centre select{flex:1;font-family:var(--font-body);font-size:14px;font-weight:600;padding:7px 10px;border:1px solid var(--accent);border-radius:8px;background:#fff;color:var(--text);outline:none}
+.sell-centre select{flex:1 1 140px;min-width:0;font-family:var(--font-body);font-size:14px;font-weight:600;padding:7px 10px;border:1px solid var(--accent);border-radius:8px;background:#fff;color:var(--text);outline:none}
+.sell-centre .loc-pill{min-width:0;max-width:100%;white-space:normal;text-align:left}
 @media(max-width:600px){
   .centre-grid{grid-template-columns:1fr}
   .move-modes{grid-template-columns:1fr 1fr}
@@ -635,30 +737,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
       </div>
     </div>
 
-    <div class="dash-tabs" id="centresTabs" style="display:none;">
-      <button class="dash-tab active" data-group="centres" data-tab="browse" onclick="setPanel('centres','browse')">All Centres</button>
-      <button class="dash-tab" data-group="centres" data-tab="manage" onclick="setPanel('centres','manage')">Manage Centres</button>
-    </div>
-
-    <div class="dash-panel active" data-panel-group="centres" data-panel="browse">
-      <div class="centre-grid" id="centreGrid"></div>
-    </div>
-    <div class="dash-panel" data-panel-group="centres" data-panel="manage">
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-title">Centres</div>
-            <div class="table-actions">
-              <button class="act-btn primary" onclick="openMove(null,null,'Transfer')">⇄ Move Stock</button>
-              <button class="btn-add" onclick="openCentreForm()">+ Add Centre</button>
-            </div>
-          </div>
-          <div class="table-filter-bar" style="background:var(--surface-alt);">
-            <div class="hint" style="margin:0;flex:1;">Purchases land at the <b>central store</b>. Move stock out to centres as they run low — the dashboard tells you when a transfer covers the gap and when you actually need to buy.</div>
-          </div>
-          <div class="table-wrap"><table class="data-table" id="centreTable"></table></div>
-        </div>
-    
-    </div>
+    <div class="centre-grid" id="centreGrid"></div>
   </div>
 
   <!-- ══ Centre detail ══ -->
@@ -759,7 +838,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     <div class="page-head">
       <div>
         <button class="back-link" onclick="go('sell')">← New sale</button>
-        <div class="page-title" style="margin-top:12px;">Bills</div>
+        <div class="page-title" style="margin-top:12px;" id="billsTitle">Bills</div>
         <div class="page-sub" id="billsSub"></div>
       </div>
       <button class="btn-download" onclick="exportBills()">↓ Excel</button>
@@ -774,12 +853,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
       <button class="dash-tab active" data-group="admin" data-tab="summary" onclick="setPanel('admin','summary')">Dashboard</button>
       <button class="dash-tab" data-group="admin" data-tab="inventory" onclick="setPanel('admin','inventory')">Inventory</button>
       <button class="dash-tab" data-group="admin" data-tab="purchase" onclick="setPanel('admin','purchase')">Purchase</button>
-      <button class="dash-tab" data-group="admin" data-tab="sales" onclick="setPanel('admin','sales')">Sales</button>
     </div>
 
     <!-- Dashboard -->
     <div class="dash-panel active" data-panel-group="admin" data-panel="summary" id="panel-summary">
       <div class="stats-grid" id="admStats"></div>
+
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Stock Value by Centre</div><div class="chart-container"><canvas id="chartCentre"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Stock Value by Category</div><div class="chart-container"><canvas id="chartCat"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Purchase Spend by Supplier</div><div class="chart-container"><canvas id="chartSup"></canvas></div></div>
+      </div>
 
       <div class="chart-card">
         <div class="card-toggle" onclick="toggleCard('lowBody','lowChev')">
@@ -787,9 +871,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
             <div class="chart-title" style="margin-bottom:0;">Low Stock &amp; What To Do</div>
             <span class="card-summary" id="lowSummary"></span>
           </div>
-          <span class="chev open" id="lowChev">▾</span>
+          <span class="chev" id="lowChev">▾</span>
         </div>
-        <div id="lowBody" style="margin-top:16px;">
+        <div id="lowBody" style="margin-top:16px;display:none;">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
             <div class="view-toggle">
               <button class="view-tab active" id="lowTabCentre" onclick="setLowView('centre')">By location</button>
@@ -812,9 +896,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
             <div class="chart-title" style="margin-bottom:0;">Module Requirement — Open Kit Orders</div>
             <span class="card-summary" id="reqSummary"></span>
           </div>
-          <span class="chev open" id="reqChev">▾</span>
+          <span class="chev" id="reqChev">▾</span>
         </div>
-        <div id="reqBody" style="margin-top:16px;">
+        <div id="reqBody" style="margin-top:16px;display:none;">
           <div class="hint" id="reqOrderLine"></div>
           <div class="chip-row" id="reqChips"></div>
           <div class="table-wrap"><table class="data-table" id="reqTable"></table></div>
@@ -825,11 +909,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         </div>
       </div>
 
-      <div class="charts-grid">
-        <div class="chart-card"><div class="chart-title">Stock Value by Centre</div><div class="chart-container"><canvas id="chartCentre"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Stock Value by Category</div><div class="chart-container"><canvas id="chartCat"></canvas></div></div>
-        <div class="chart-card"><div class="chart-title">Purchase Spend by Supplier</div><div class="chart-container"><canvas id="chartSup"></canvas></div></div>
-      </div>
     </div>
 
     <!-- Inventory -->
@@ -910,16 +989,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
       <div id="poVendors"></div>
     </div>
 
-    <!-- Sales -->
-    <div class="dash-panel" data-panel-group="admin" data-panel="sales" id="panel-sales">
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">All Sales</div>
-          <div class="table-actions"><button class="btn-download" onclick="exportBills()">↓ Excel</button></div>
-        </div>
-        <div class="table-wrap"><table class="data-table" id="salesTable"></table></div>
-      </div>
-    </div>
   </div>
 
   <div class="footer">ElectroBotics · Inventory Management</div>
@@ -1702,8 +1771,7 @@ function applyNav(){
   // Kits & BOM / Kit Orders / Manage Centres are admin work — tutors just see the cards.
   const isAdmin=!!(user&&role==='admin');
   byId('kitsTabs').style.display=isAdmin?'':'none';
-  byId('centresTabs').style.display=isAdmin?'':'none';
-  if(!isAdmin){setPanel('kits','browse');setPanel('centres','browse');}
+  if(!isAdmin)setPanel('kits','browse');
 }
 
 function toggleAccountMenu(e){e.stopPropagation();byId('accountDropdown').classList.toggle('open');}
@@ -1729,10 +1797,10 @@ function go(screen){
   byId('navAdmin').classList.toggle('active',screen==='admin');
   window.scrollTo(0,0);
   if(screen==='kits'){renderKits();if(role==='admin'){renderKitTable();renderOrders();}}
-  if(screen==='centres'){renderCentres();if(role==='admin')renderCentreTable();}
+  if(screen==='centres')renderCentres();
   if(screen==='sell'){renderSellCentres();renderPickList();renderCart();}
   if(screen==='bills')renderBills();
-  if(screen==='admin')renderAdmin();
+  if(screen==='admin'){renderAdmin();setTimeout(resizeCharts,320);}   // after the screen's fade-in settles
 }
 
 function toggleCard(bodyId,chevId){
@@ -1851,9 +1919,11 @@ function renderCentres(){
   if(locs.length===0){g.innerHTML='<div class="tbl-empty">No centres yet.'+(role==='admin'?' Use “+ New Centre” to add one.':'')+'</div>';return}
   g.innerHTML=locs.map(c=>{
     const code=c['Centre Code'],s=centreStats(code),central=isCentral(c);
-    return `<div class="centre-card ${central?'central':''}" style="border-color:${esc(centreColor(c))}33;" onclick="openCentre('${esc(code)}')">
+    const inactive=!isActiveC(c);
+    return `<div class="centre-card ${central?'central':''} ${inactive?'inactive':''}" style="border-color:${esc(centreColor(c))}33;" onclick="openCentre('${esc(code)}')">
       <div class="centre-stripe" style="background:${esc(centreColor(c))}"></div>
-      <div class="centre-code">${esc(code)}${central?' · CENTRAL STORE':''}</div>
+      ${role==='admin'?`<button class="centre-edit" title="Edit centre" onclick="event.stopPropagation();openCentreForm('${esc(code)}')">Edit</button>`:''}
+      <div class="centre-code">${esc(code)}${central?' · CENTRAL STORE':''}${inactive?' · <span style="color:var(--red)">INACTIVE</span>':''}</div>
       <div class="centre-name">${esc(c['Centre Name'])}</div>
       <div class="centre-meta">${esc([c.City,c.Incharge].filter(Boolean).join(' · '))}</div>
       <div class="centre-nums">
@@ -2126,13 +2196,13 @@ function setPanel(group,name){
   if(group==='centres'){
     const h=byId('centresHeadActions');if(h)h.style.display=name==='browse'?'flex':'none';
   }
-  if(group==='admin'&&name==='summary')setTimeout(buildCharts,30);
+  if(group==='admin'&&name==='summary'){setTimeout(buildCharts,30);setTimeout(resizeCharts,260);}
 }
 function setTab(tab){setPanel('admin',tab)}   // kept: older call sites
 function renderAdmin(){
   buildCombos();renderStats();renderLow();renderRequirement();
   renderInventory();renderMoves();      // Stock Log now lives inside the Inventory tab
-  renderPurchase();renderSalesTable();
+  renderPurchase();
   setTimeout(buildCharts,30);
 }
 
@@ -2245,6 +2315,15 @@ function renderRequirement(){
 let charts={};
 function chartFont(){return {family:"'JetBrains Mono',monospace",size:11}}
 function destroyChart(k){if(charts[k]){charts[k].destroy();delete charts[k]}}
+/**
+ * Chart.js measures its container once, at construction. If that happens while
+ * the panel is mid-animation or hidden, every canvas sticks at its 300×150
+ * default. Re-measure after the panel has actually laid out, and on rotate.
+ */
+function resizeCharts(){Object.keys(charts).forEach(k=>{try{charts[k]&&charts[k].resize()}catch(_){}})}
+let _resizeT;
+window.addEventListener('resize',()=>{clearTimeout(_resizeT);_resizeT=setTimeout(resizeCharts,150)});
+window.addEventListener('orientationchange',()=>setTimeout(resizeCharts,300));
 function buildCharts(){
   if(typeof Chart==='undefined')return;
   try{Chart.register(ChartDataLabels)}catch(_){}
@@ -2860,25 +2939,6 @@ async function saveMins(){
 }
 
 // ─── Centres (admin table + form) ───────────────────────────────
-function renderCentreTable(){
-  const locs=CENTRES.slice().sort((a,b)=>(isCentral(b)?1:0)-(isCentral(a)?1:0));
-  byId('centreTable').innerHTML=`<thead><tr><th>Code</th><th>Centre</th><th>City</th><th>Incharge</th><th>Type</th>
-      <th class="num">Units</th><th class="num">Value</th><th class="num">Needs Stock</th><th>Status</th><th></th></tr></thead><tbody>`+
-    (locs.length?locs.map(c=>{
-      const code=c['Centre Code'],s=centreStats(code),central=isCentral(c);
-      return `<tr><td class="mono"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(centreColor(c))};margin-right:7px;"></span>${esc(code)}</td>
-        <td style="font-weight:600">${esc(c['Centre Name'])}</td><td>${esc(c.City||'')}</td><td>${esc(c.Incharge||'')}</td>
-        <td>${central?'<span class="badge info">Central store</span>':'<span class="badge neutral">Centre</span>'}</td>
-        <td class="num">${s.units}</td><td class="num">${money0(s.value)}</td>
-        <td class="num">${s.out+s.low?'<span class="badge '+(s.out?'out':'low')+'">'+(s.out+s.low)+'</span>':'<span class="badge ok">0</span>'}</td>
-        <td><span class="badge ${isActiveC(c)?'ok':'neutral'}">${esc(c.Status||'Active')}</span></td>
-        <td><div class="row-acts">
-          <button class="act-btn" onclick="openCentre('${esc(code)}')">View</button>
-          <button class="act-btn primary" onclick="openCentreForm('${esc(code)}')">Edit</button>
-        </div></td></tr>`;
-    }).join(''):'<tr><td colspan="10" class="tbl-empty">No centres yet.</td></tr>')+'</tbody>';
-}
-
 let editingCentre=null;
 function openCentreForm(code){
   editingCentre=code||null;
@@ -3327,11 +3387,11 @@ function refreshAll(){
   buildCombos();
   if(role==='admin'){
     renderStats();renderLow();renderRequirement();renderInventory();renderMoves();
-    renderKitTable();renderCentreTable();renderOrders();renderPurchase();renderSalesTable();
+    renderKitTable();renderOrders();renderPurchase();
     if(byId('panel-summary').classList.contains('active'))setTimeout(buildCharts,20);
   }
   if(currentScreen==='kits'){renderKits();if(role==='admin'){renderKitTable();renderOrders();}}
-  if(currentScreen==='centres'){renderCentres();if(role==='admin')renderCentreTable();}
+  if(currentScreen==='centres')renderCentres();
   if(currentScreen==='centre')renderCentreDetail();
   if(currentScreen==='sell'){renderSellCentres();renderPickList();renderCart();}
   if(currentScreen==='bills')renderBills();
@@ -3506,16 +3566,16 @@ function renderBills(){
   const all=myBills();
   const paid=all.filter(s=>same(s['Payment Status'],'Paid'));
   const pend=all.filter(s=>!same(s['Payment Status'],'Paid'));
-  byId('billsSub').textContent=(role==='admin'?'All bills':'Bills you raised')+' · '+all.length+' total · '+money0(all.reduce((s,x)=>s+num(x.Total),0));
+  byId('billsTitle').textContent=role==='admin'?'Bills & Sales':'Bills';
+  byId('billsSub').textContent=(role==='admin'?'Every bill raised, across all centres':'Bills you raised')+' · '+all.length+' total · '+money0(all.reduce((s,x)=>s+num(x.Total),0));
   byId('billChips').innerHTML=`
     <button class="chip ${billFilter==='all'?'active':''}" onclick="setBillFilter('all')">All ${all.length}</button>
     <button class="chip ${billFilter==='paid'?'active':''}" onclick="setBillFilter('paid')">Paid ${paid.length}</button>
     <button class="chip warn ${billFilter==='pending'?'active':''}" onclick="setBillFilter('pending')">Pending ${pend.length}</button>
     <span class="chip-total">Pending value ${money0(pend.reduce((s,x)=>s+num(x.Total),0))}</span>`;
   const rows=(billFilter==='paid'?paid:billFilter==='pending'?pend:all).slice().reverse();
-  byId('billsTable').innerHTML=billsHtml(rows,false);
+  byId('billsTable').innerHTML=billsHtml(rows,role==='admin');
 }
-function renderSalesTable(){byId('salesTable').innerHTML=billsHtml(SALES.slice().reverse(),true)}
 function billsHtml(rows,showSeller){
   return `<thead><tr><th>Bill No</th><th>Date</th><th>Centre</th><th>Customer</th><th class="num">Items</th><th class="num">Total</th><th>Payment</th>${showSeller?'<th>Sold By</th>':''}<th></th></tr></thead><tbody>`+
     (rows.length?rows.map(s=>{
@@ -3539,10 +3599,10 @@ function openBill(no){
   waBill=no;
   byId('billModalTitle').textContent=s['Bill No'];
   byId('billBody').innerHTML=`<div class="modal-sub">${esc(s.Customer)}${s.Contact?' · '+esc(s.Contact):''} · ${esc(fmtDate(s.Date))} · ${esc(centreName(s.Centre))}</div>
-    <table class="data-table"><thead><tr><th>Module</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody>
+    <div class="table-wrap narrow"><table class="data-table"><thead><tr><th>Module</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody>
     ${items.map(i=>`<tr><td>${esc(i['Module Name'])}<div class="mono" style="font-size:10px;color:var(--text-light)">${esc(i['Item Code'])}</div></td>
       <td class="num">${num(i.Qty)}</td><td class="num">${money0(i.Rate)}</td><td class="num">${money0(i.Amount)}</td></tr>`).join('')}
-    </tbody></table>
+    </tbody></table></div>
     <div class="cart-total"><span class="lbl">Total</span><span class="val">${money0(s.Total)}</span></div>
     <div class="hint" style="margin-top:14px;">Payment: <b>${esc(s['Payment Status']||'Pending')}</b>${s.Method?' · '+esc(s.Method):''}${s['Paid On']?' · paid on '+esc(fmtDate(s['Paid On'])):''}${s['Paid By']?' · marked by '+esc(s['Paid By']):''}${s['Sold By']?'<br>Sold by '+esc(s['Sold By']):''}${s.Notes?'<br>'+esc(s.Notes):''}</div>`;
   const pb=byId('billPayBtn');
