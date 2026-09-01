@@ -349,6 +349,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   .dash-tab{padding:11px 13px;min-height:40px}
   .row-acts{gap:8px}
   .centre-edit{min-height:36px;padding:8px 14px}
+  .kit-act{min-height:36px;padding:8px 12px}
 
   /* small ×/checkbox controls get a finger-sized hit area without growing visually */
   .modal-close{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0}
@@ -397,6 +398,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   .picker-clear{width:34px;height:34px;display:none;align-items:center;justify-content:center;right:4px}
   .picker-clear.on{display:flex}
   .centre-edit{min-height:36px;padding:8px 14px}
+  .kit-act{min-height:36px;padding:8px 12px}
 }
 
 @media(max-width:380px){
@@ -414,6 +416,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .centre-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
 .centre-card.central{border-color:var(--accent);background:linear-gradient(180deg,var(--accent-light) 0%,var(--surface) 62px)}
 .centre-card.inactive{opacity:.62}
+.kit-card.inactive{opacity:.62}
+.kit-acts{position:absolute;top:12px;right:12px;z-index:2;display:flex;gap:6px;opacity:0;transition:opacity .18s}
+.kit-card:hover .kit-acts{opacity:1}
+.kit-act{font-family:var(--font-mono);font-size:10px;font-weight:700;padding:5px 11px;border:1px solid var(--border);
+  border-radius:7px;background:#fff;color:var(--text-dim);cursor:pointer;white-space:nowrap;transition:all .18s}
+.kit-act:hover{border-color:var(--accent);color:var(--accent)}
+.kit-act.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.kit-act.primary:hover{background:var(--accent-dark);color:#fff}
+.kit-price{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:10px 0 2px;
+  padding:9px 12px;background:var(--accent-light);border-radius:9px}
+.kit-price .l{font-family:var(--font-mono);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent-dark)}
+.kit-price .v{font-family:var(--font-mono);font-size:17px;font-weight:700;color:var(--accent-dark)}
+@media (hover:none){.kit-acts{opacity:1}}
 .centre-edit{position:absolute;top:12px;right:12px;z-index:2;font-family:var(--font-mono);font-size:10px;font-weight:700;
   padding:5px 11px;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text-dim);cursor:pointer;
   opacity:0;transition:all .18s}
@@ -663,31 +678,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="page-sub" id="kitsSub">Component list and cost for every ElectroBotics kit</div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;" id="kitsHeadActions">
-        <div class="filter-group"><label>Can build from</label>
-          <select id="kitsLocFilter" onchange="renderKits()"></select>
-        </div>
         <button class="btn-add" id="kitsAddBtn" onclick="openKitForm()" style="display:none;">+ New Kit</button>
       </div>
     </div>
 
     <div class="dash-tabs" id="kitsTabs" style="display:none;">
       <button class="dash-tab active" data-group="kits" data-tab="browse" onclick="setPanel('kits','browse')">All Kits</button>
-      <button class="dash-tab" data-group="kits" data-tab="manage" onclick="setPanel('kits','manage')">Kits &amp; BOM</button>
       <button class="dash-tab" data-group="kits" data-tab="orders" onclick="setPanel('kits','orders')">Kit Orders</button>
     </div>
 
     <div class="dash-panel active" data-panel-group="kits" data-panel="browse">
       <div class="kit-grid" id="kitGrid"></div>
-    </div>
-    <div class="dash-panel" data-panel-group="kits" data-panel="manage">
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-title">Kits</div>
-            <div class="table-actions"><button class="btn-add" onclick="openKitForm()">+ Add Kit</button></div>
-          </div>
-          <div class="table-wrap"><table class="data-table" id="kitTable"></table></div>
-        </div>
-    
     </div>
     <div class="dash-panel" data-panel-group="kits" data-panel="orders">
         <div class="table-card">
@@ -1796,7 +1797,7 @@ function go(screen){
   byId('navSell').classList.toggle('active',screen==='sell'||screen==='bills');
   byId('navAdmin').classList.toggle('active',screen==='admin');
   window.scrollTo(0,0);
-  if(screen==='kits'){renderKits();if(role==='admin'){renderKitTable();renderOrders();}}
+  if(screen==='kits'){renderKits();if(role==='admin')renderOrders();}
   if(screen==='centres')renderCentres();
   if(screen==='sell'){renderSellCentres();renderPickList();renderCart();}
   if(screen==='bills')renderBills();
@@ -1812,12 +1813,13 @@ function toggleCard(bodyId,chevId){
 
 // ─── Kits ───────────────────────────────────────────────────────
 /**
- * Kit availability is measured against the CENTRAL STORE, not company-wide totals:
- * stock already sitting in a teaching centre is deployed, not available to build
- * kits from. Pass a location to ask "what could this centre build on its own".
+ * Kits are assembled at the CENTRAL STORE and nowhere else, so every kit figure in
+ * the app — here, on the dashboard, on kit orders and in Purchase — is measured
+ * against central stock only. Stock sitting in a teaching centre is deployed; it
+ * cannot be built from. There is deliberately no location parameter.
  */
-function kitStats(kitCode,loc){
-  const src=loc||centralCode();
+function kitStats(kitCode){
+  const src=centralCode();
   const rows=bomFor(kitCode);
   let cost=0,ebCost=0,buildable=Infinity,short=0;
   rows.forEach(r=>{
@@ -1834,45 +1836,46 @@ function kitStats(kitCode,loc){
 }
 
 function renderKits(){
-  fillSelect('kitsLocFilter','',allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']));
-  if(!byId('kitsLocFilter').value)setSelCode('kitsLocFilter',centralCode());
-  const loc=String(byId('kitsLocFilter').value||'').split(' — ')[0]||centralCode();
   const g=byId('kitGrid');
-  byId('kitsSub').textContent=KITS.length+' kits · can build from '+centreName(loc)+' stock'+(demoMode?' · demo data':'');
+  byId('kitsSub').textContent=KITS.length+' kits · built from '+centreName(centralCode())+' stock'+(demoMode?' · demo data':'');
   if(KITS.length===0){g.innerHTML='<div class="tbl-empty">No kits yet.'+(role==='admin'?' Use “+ New Kit” to add one.':'')+'</div>';return}
+  const admin=role==='admin';
   g.innerHTML=KITS.map(k=>{
-    const s=kitStats(k['Kit Code'],loc);
-    const col=kitColor(k);
+    const code=k['Kit Code'],s=kitStats(code),col=kitColor(k);
     const bClass=s.buildable===0?'out':s.buildable<5?'low':'ok';
-    return `<div class="kit-card" style="border-color:${esc(col)}33;" onclick="openKit('${esc(k['Kit Code'])}')">
+    const inactive=!!(k.Status&&!same(k.Status,'Active'));
+    return `<div class="kit-card ${inactive?'inactive':''}" style="border-color:${esc(col)}33;" onclick="openKit('${esc(code)}')">
       <div class="kit-stripe" style="background:${esc(col)}"></div>
-      <div class="kit-code">${esc(k['Kit Code'])}${!same(k.Status,'Active')&&k.Status?' · '+esc(k.Status):''}</div>
+      ${admin?`<div class="kit-acts">
+        <button class="kit-act" title="Edit kit details" onclick="event.stopPropagation();openKitForm('${esc(code)}')">Edit</button>
+        <button class="kit-act primary" title="Edit the component list" onclick="event.stopPropagation();openBom('${esc(code)}')">Components</button>
+      </div>`:''}
+      <div class="kit-code">${esc(code)}${inactive?' · '+esc(k.Status):''}</div>
       <div class="kit-name">${esc(k['Kit Name'])}</div>
       <div class="kit-desc">${esc(k.Description||'')}</div>
       <div class="kit-meta">
         <span class="kit-count">${s.count} component${s.count===1?'':'s'}</span>
-        <span class="kit-cost">${money0(s.cost)}</span>
+        <span class="kit-cost">${money0(s.cost)} cost</span>
       </div>
+      <div class="kit-price"><span class="l">EB price</span><span class="v">${money0(s.ebCost)}</span></div>
       <div class="kit-buildable"><span class="badge ${bClass}">Can build ${s.buildable}</span>${s.short?' <span class="badge out">'+s.short+' short</span>':''}</div>
     </div>`;
   }).join('');
 }
 
-let kdLoc='';
 function openKit(code){
   currentKit=code;
-  kdLoc=String(byId('kitsLocFilter').value||'').split(' — ')[0]||centralCode();
   const k=kitByCode(code);if(!k)return;
   byId('kdName').textContent=k['Kit Name'];
-  byId('kdSub').textContent=k['Kit Code']+(k.Description?' · '+k.Description:'')+' · can build from '+centreName(kdLoc)+' stock';
+  byId('kdSub').textContent=k['Kit Code']+(k.Description?' · '+k.Description:'')+' · built from '+centreName(centralCode())+' stock';
   byId('kdActions').innerHTML=role==='admin'
     ? `<button class="act-btn" onclick="openKitForm('${esc(code)}')">Edit kit</button><button class="act-btn primary" onclick="openBom('${esc(code)}')">Edit components</button>`
     : '';
-  const s=kitStats(code,kdLoc);
+  const s=kitStats(code);
   byId('kdStats').innerHTML=`
     <div class="stat-card accent"><div class="stat-label">Component Cost</div><div class="stat-value">${money0(s.cost)}</div><div class="stat-sub">total cost, all ${s.count} modules</div></div>
     <div class="stat-card green"><div class="stat-label">At EB Price</div><div class="stat-value">${money0(s.ebCost)}</div><div class="stat-sub">${s.cost>0?'margin '+money0(s.ebCost-s.cost):'—'}</div></div>
-    <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Kits We Can Build</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">complete kits from ${esc(centreName(kdLoc))} stock</div></div>
+    <div class="stat-card ${s.buildable===0?'red':s.buildable<5?'amber':'purple'}"><div class="stat-label">Kits We Can Build</div><div class="stat-value">${s.buildable}</div><div class="stat-sub">complete kits from ${esc(centreName(centralCode()))} stock</div></div>
     <div class="stat-card amber"><div class="stat-label">Short Modules</div><div class="stat-value">${s.short}</div><div class="stat-sub">not enough for one kit</div></div>`;
 
   const rows=bomFor(code);
@@ -1880,13 +1883,13 @@ function openKit(code){
   // stock is deployed, so showing it here would only invite the wrong conclusion.
   byId('kdTable').innerHTML=`<thead><tr>
       <th>Item Code</th><th>Module</th><th>Supplier</th><th class="num">Qty / Kit</th>
-      <th class="num">At ${esc(centreName(kdLoc))}</th><th class="num">Kits Covered</th>
+      <th class="num">At ${esc(centreName(centralCode()))}</th><th class="num">Kits Covered</th>
       <th class="num">Unit Cost</th><th class="num">Line Cost</th><th>Status</th></tr></thead><tbody>`+
     (rows.length?rows.map(r=>{
       const it=itemByCode(r['Item Code']);const q=num(r.Qty)||1;
       if(!it)return `<tr><td class="mono">${esc(r['Item Code'])}</td><td colspan="7" style="color:var(--red);">Not found in inventory</td><td><span class="badge out">Missing</span></td></tr>`;
       const uc=totalCostOf(it),code2=it['Item Code'];
-      const have=qtyAt(code2,kdLoc);
+      const have=qtyAt(code2,centralCode());
       const builds=Math.floor(have/q);
       return `<tr><td class="mono">${esc(code2)}</td><td>${esc(it['Module Name'])}</td>
         <td style="color:var(--text-dim);font-size:12px">${esc(it.Supplier||'')}</td>
@@ -1955,7 +1958,7 @@ function renderCentreDetail(){
     <div class="stat-card accent"><div class="stat-label">Stock Value</div><div class="stat-value" style="font-size:23px;">${money0(s.value)}</div><div class="stat-sub">${s.units} units · ${s.skus} modules held</div></div>
     <div class="stat-card ${s.out?'red':'green'}"><div class="stat-label">Out of Stock</div><div class="stat-value">${s.out}</div><div class="stat-sub">modules at zero here</div></div>
     <div class="stat-card ${s.low?'amber':'green'}"><div class="stat-label">Below Min Qty</div><div class="stat-value">${s.low}</div><div class="stat-sub">at or under their Min Qty here</div></div>
-    <div class="stat-card purple"><div class="stat-label">Kits We Can Build</div><div class="stat-value">${KITS.reduce((n,k)=>n+kitStats(k['Kit Code'],code).buildable,0)}</div><div class="stat-sub">across all ${KITS.length} kits, from stock here</div></div>`;
+    ${central?`<div class="stat-card purple"><div class="stat-label">Kits We Can Build</div><div class="stat-value">${KITS.reduce((n,k)=>n+kitStats(k['Kit Code']).buildable,0)}</div><div class="stat-sub">across all ${KITS.length} kits — kits are only built here</div></div>`:''}`;
 
   const analysis=lowAnalysis();
   const mine=analysis.rows.filter(r=>same(r.centreCode,code));
@@ -2006,7 +2009,6 @@ function buildCombos(){
   const locLabels=allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']);
   fillSelect('fLoc','All locations',locLabels);
   fillSelect('mLoc','All locations',locLabels);
-  fillSelect('kitsLocFilter','All locations (company-wide)',locLabels);
   fillSelect('lowCentreFilter','All locations',allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']));
   fillSelect('i_OpenLoc','',locLabels);
   fillCombo('mv_Sup',uniq(INV.map(i=>i.Supplier).concat(PHIST.map(h=>h.Supplier))));
@@ -2991,23 +2993,6 @@ async function deleteCentre(){
 }
 
 // ─── Kits (admin) ───────────────────────────────────────────────
-function renderKitTable(){
-  byId('kitTable').innerHTML=`<thead><tr><th>Kit Code</th><th>Kit Name</th><th>Description</th><th class="num">Components</th><th class="num">Cost</th><th class="num">EB Price</th><th class="num">Can Build</th><th>Status</th><th></th></tr></thead><tbody>`+
-    (KITS.length?KITS.map(k=>{
-      const s=kitStats(k['Kit Code'],'');
-      return `<tr><td class="mono"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${esc(kitColor(k))};margin-right:7px;"></span>${esc(k['Kit Code'])}</td>
-        <td style="font-weight:600">${esc(k['Kit Name'])}</td><td style="color:var(--text-dim);font-size:12px;max-width:260px">${esc(k.Description||'')}</td>
-        <td class="num">${s.count}</td><td class="num">${money0(s.cost)}</td><td class="num" style="color:var(--accent);font-weight:700">${money0(s.ebCost)}</td>
-        <td class="num"><span class="badge ${s.buildable===0?'out':s.buildable<5?'low':'ok'}">${s.buildable}</span></td>
-        <td><span class="badge ${same(k.Status,'Active')||!k.Status?'ok':'neutral'}">${esc(k.Status||'Active')}</span></td>
-        <td><div class="row-acts">
-          <button class="act-btn" onclick="openKit('${esc(k['Kit Code'])}')">View</button>
-          <button class="act-btn" onclick="openKitForm('${esc(k['Kit Code'])}')">Edit</button>
-          <button class="act-btn primary" onclick="openBom('${esc(k['Kit Code'])}')">Components</button>
-        </div></td></tr>`;
-    }).join(''):'<tr><td colspan="9" class="tbl-empty">No kits yet.</td></tr>')+'</tbody>';
-}
-
 let editingKit=null;
 function openKitForm(code){
   editingKit=code||null;
@@ -3387,10 +3372,10 @@ function refreshAll(){
   buildCombos();
   if(role==='admin'){
     renderStats();renderLow();renderRequirement();renderInventory();renderMoves();
-    renderKitTable();renderOrders();renderPurchase();
+    renderOrders();renderPurchase();
     if(byId('panel-summary').classList.contains('active'))setTimeout(buildCharts,20);
   }
-  if(currentScreen==='kits'){renderKits();if(role==='admin'){renderKitTable();renderOrders();}}
+  if(currentScreen==='kits'){renderKits();if(role==='admin')renderOrders();}
   if(currentScreen==='centres')renderCentres();
   if(currentScreen==='centre')renderCentreDetail();
   if(currentScreen==='sell'){renderSellCentres();renderPickList();renderCart();}
@@ -3797,7 +3782,7 @@ function exportLow(){
 }
 function exportKitBom(){
   const k=kitByCode(currentKit);if(!k)return;
-  const loc=kdLoc||centralCode();
+  const loc=centralCode();
   xlsx(bomFor(currentKit).map(b=>{
     const it=itemByCode(b['Item Code'])||{};
     const q=num(b.Qty),have=qtyAt(b['Item Code'],loc);
