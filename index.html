@@ -535,6 +535,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .po-qty:focus{background:#fff}
 .po-chk{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
 .po-row-off{opacity:.4}
+/* Options / Reset sit under the Value figure, right-aligned with it */
+.po-acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:5px}
 .po-src{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
 .po-src.kit{background:var(--amber-bg);color:#9a7200}
 .po-src.centre{background:var(--accent-light);color:var(--accent-dark)}
@@ -1114,12 +1116,35 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     <div class="modal-body">
       <div class="modal-sub" id="histSub"></div>
       <div id="histList"></div>
+
+      <!-- New vendor for THIS order. Saved to the buying-options list; never to Inventory. -->
+      <div id="histForm" style="display:none;border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+        <div class="pb-title" style="font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent-dark);margin-bottom:4px;">Add a buying option</div>
+        <div class="hint" style="margin:0 0 12px;">Recorded as another place this module can be bought, and used for <b>this order</b>. It does <b>not</b> change the module's rate in Inventory.</div>
+        <div class="form-grid" style="gap:0 14px;">
+          <div class="form-row"><label>Vendor <span class="req">*</span></label><div class="combo">
+            <select id="h_Sup_sel" onchange="onComboSelect('h_Sup')"></select>
+            <input type="text" id="h_Sup_new" placeholder="New vendor" style="display:none;">
+            <button type="button" class="combo-back" id="h_Sup_back" onclick="comboBack('h_Sup')" style="display:none;">↩</button>
+          </div></div>
+          <div class="form-row"><label>Vendor SKU</label><input type="text" id="h_SKU" placeholder="their part number"></div>
+          <div class="form-row"><label>Purchase Rate ₹ <span class="req">*</span></label><input type="number" step="0.01" id="h_Rate" oninput="histPreview()"></div>
+          <div class="form-row"><label>Shipping %</label><input type="number" step="0.01" id="h_Ship" oninput="histPreview()"></div>
+          <div class="form-row"><label>GST %</label><input type="number" step="0.01" id="h_GST" oninput="histPreview()"></div>
+          <div class="form-row"><label>Handling %</label><input type="number" step="0.01" id="h_Handle" oninput="histPreview()"></div>
+          <div class="form-row"><label>Reference</label><input type="text" id="h_Ref" placeholder="quote no., link"></div>
+          <div class="form-row full"><label>Comments</label><textarea id="h_Cmt" rows="2" placeholder="lead time, MOQ, why you'd use this vendor…"></textarea></div>
+        </div>
+        <div class="move-preview" id="h_Preview"></div>
+      </div>
     </div>
     <div class="modal-msg" id="h_Msg"></div>
     <div class="modal-foot">
+      <button class="act-btn" id="h_AddBtn" onclick="histShowForm()">+ Add buying option</button>
       <button class="btn-download" onclick="exportHistory()">↓ Excel</button>
       <div class="spacer"></div>
       <button class="btn-cancel" onclick="closeModal('histModal')">Close</button>
+      <button class="btn-save" id="h_SaveBtn" onclick="savePurchaseEntry()" style="display:none;">Save &amp; use</button>
     </div>
   </div>
 </div>
@@ -2074,6 +2099,7 @@ function buildCombos(){
   fillSelect('lowCentreFilter','All locations',allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']));
   fillSelect('i_OpenLoc','',locLabels);
   fillCombo('mv_Sup',uniq(INV.map(i=>i.Supplier).concat(PHIST.map(h=>h.Supplier))));
+  fillCombo('h_Sup',uniq(INV.map(i=>i.Supplier).concat(PHIST.map(h=>h.Supplier))));
 }
 function fillCombo(fid,values){
   const sel=byId(fid+'_sel');const cur=sel.value;
@@ -2683,9 +2709,77 @@ function openHistory(code){
     `<br><span style="font-size:11px;opacity:.85">Sorted by purchase rate. Total cost = rate + shipping % + GST % + handling %. `+
     `Picking one changes <b>this order only</b> — never the module's rate.</span>`;
   byId('h_Msg').textContent='';byId('h_Msg').className='modal-msg';
+  byId('histForm').style.display='none';
+  byId('h_SaveBtn').style.display='none';
+  byId('h_AddBtn').style.display=role==='admin'?'':'none';
   renderHistory();
   openModalEl('histModal');
 }
+
+/**
+ * Add a vendor we have not bought this module from yet — the usual reason being
+ * that the regular supplier is out of stock. It is written to the buying-options
+ * list (the PurchaseHistory tab) with no quantity, which marks it a quote rather
+ * than a purchase, and is then selected for this order. Inventory is untouched:
+ * only Update Stock changes what a module holds, only Inventory → Edit changes
+ * what it costs.
+ */
+function histShowForm(){
+  buildCombos();
+  const it=itemByCode(histItem)||{};
+  setComboValue('h_Sup','');
+  byId('h_SKU').value='';byId('h_Rate').value='';
+  byId('h_Ship').value=costOf(it).shipPc||'';
+  byId('h_GST').value=costOf(it).gstPc||'';
+  byId('h_Handle').value=costOf(it).handlePc||'';
+  byId('h_Ref').value='';byId('h_Cmt').value='';
+  byId('histForm').style.display='';
+  byId('h_SaveBtn').style.display='';
+  byId('h_AddBtn').style.display='none';
+  byId('h_Msg').textContent='';byId('h_Msg').className='modal-msg';
+  histPreview();
+  byId('histForm').scrollIntoView({block:'nearest'});
+}
+
+function histPreview(){
+  const c=costOf({'Purchase Rate':byId('h_Rate').value,'Shipping %':byId('h_Ship').value,
+    'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
+  const it=itemByCode(histItem)||{};
+  const curRate=num(it['Purchase Rate']);
+  const d=c.base-curRate;
+  const cmp=Math.abs(d)<0.005?'<b>same rate</b>'
+    :`<b style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?money(-d)+' cheaper':money(d)+' dearer'}</b>`;
+  byId('h_Preview').innerHTML=`Purchase rate <b>${money(c.base,0)}</b>`+
+    (curRate>0?` — vs the module's ${money(curRate,0)}, ${cmp}`:'')+
+    `<br>Total cost with charges <b>${money(c.total)}</b>`+
+    `<br><span style="opacity:.8">Ordering only — the module's own rate stays as it is.</span>`;
+}
+
+async function savePurchaseEntry(){
+  const msg=byId('h_Msg'),btn=byId('h_SaveBtn');
+  const sup=comboValue('h_Sup');
+  if(!sup){showErrPlain(msg,'Pick or type the vendor.');return}
+  if(byId('h_Rate').value.trim()===''){showErrPlain(msg,'Enter the purchase rate.');return}
+  const c=costOf({'Purchase Rate':byId('h_Rate').value,'Shipping %':byId('h_Ship').value,
+    'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
+  const entry={'Item Code':histItem,'Date':today(),'Supplier':sup,'SKU':byId('h_SKU').value.trim(),
+    'Purchase Rate':byId('h_Rate').value.trim(),'Shipping %':byId('h_Ship').value.trim(),
+    'GST %':byId('h_GST').value.trim(),'Handling %':byId('h_Handle').value.trim(),
+    'Total Cost':c.total.toFixed(2),'Qty':'','Ref':byId('h_Ref').value.trim(),
+    'Comments':byId('h_Cmt').value.trim(),'By':(user&&user.email)||''};
+  btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
+  const r=await post({action:'addPurchase',entry:entry});
+  btn.disabled=false;
+  if(!r.ok){showErr(msg,'Could not save:',r);return}
+  const id=r.entryId||('PH-local-'+PHIST.length);
+  PHIST.push(Object.assign({'Entry ID':id},entry));
+  byId('histForm').style.display='none';
+  byId('h_SaveBtn').style.display='none';
+  byId('h_AddBtn').style.display='';
+  poUseVendor(histItem,id);          // added because you intend to order from them
+}
+
+function showErrPlain(el,text){el.textContent=text;el.className='modal-msg err'}
 
 function renderHistory(){
   const code=histItem,it=itemByCode(code);
@@ -3332,7 +3426,7 @@ function renderPurchase(){
             ${r.qty!==r.suggested?`<div class="qty-min">was ${r.suggested}</div>`:''}</td>
           <td class="num">${r.rate?money(r.rate,0):'<span style="color:var(--red)">no rate</span>'}</td>
           <td class="num"><b>${money0(r.value)}</b>
-            ${role==='admin'?`<div style="margin-top:4px" class="row-acts"><button class="act-btn" onclick="openHistory('${esc(r.code)}')">Options</button>${r.picked?`<button class="act-btn" title="Back to the module's own vendor" onclick="poClearVendor('${esc(r.code)}')">Reset</button>`:''}</div>`:''}
+            ${role==='admin'?`<div class="po-acts"><button class="act-btn" onclick="openHistory('${esc(r.code)}')">Options</button>${r.picked?`<button class="act-btn" title="Back to the module's own vendor" onclick="poClearVendor('${esc(r.code)}')">Reset</button>`:''}</div>`:''}
           </td></tr>`).join('')}
         </tbody></table></div>
     </div>`;
