@@ -598,6 +598,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .hist-row:last-child{border-bottom:none}
 .hist-row.best{background:linear-gradient(90deg,var(--green-bg),transparent 60%);
   margin:0 -10px;padding-left:10px;padding-right:10px;border-radius:8px}
+/* the option this order is actually using */
+.hist-row.inuse{background:var(--accent-light);border:1px solid var(--accent);
+  margin:6px -10px;padding:12px 10px;border-radius:10px}
+.hist-row.inuse .hist-v,.hist-row.inuse .hist-price .r{color:var(--accent-dark)}
+.tag-use{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;
+  background:var(--accent);color:#fff;margin-left:6px;letter-spacing:.4px}
 .hist-v{font-size:14px;font-weight:700;color:var(--text)}
 .hist-meta{font-family:var(--font-mono);font-size:10px;color:var(--text-light);margin-top:2px}
 .hist-cmt{font-size:12px;color:var(--text-dim);margin-top:5px;line-height:1.5;grid-column:1/-1}
@@ -609,7 +615,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .tag-quote{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;
   background:var(--amber-bg);color:#9a7200;margin-left:6px}
 .tag-cur{font-family:var(--font-mono);font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;
-  background:var(--accent);color:#fff;margin-left:6px}
+  background:var(--surface-alt);color:var(--text-dim);border:1px solid var(--border);margin-left:6px}
 .purchase-block{border:1px solid var(--accent);background:var(--accent-light);border-radius:10px;
   padding:14px 15px 4px;margin-top:4px}
 .purchase-block .pb-title{font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;
@@ -2781,6 +2787,21 @@ async function savePurchaseEntry(){
 
 function showErrPlain(el,text){el.textContent=text;el.className='modal-msg err'}
 
+/**
+ * Is this the option the order is actually using? With a vendor picked, it is
+ * that exact entry. With none picked, the line falls back to the module's own
+ * vendor and rate — so an entry counts only when vendor, rate AND SKU all match,
+ * which is precisely when pressing "Use in purchase" would change nothing.
+ */
+function historyInUse(h,it){
+  const pick=poVendor[histItem];
+  if(pick)return same(h['Entry ID'],pick.entryId);
+  if(!it)return false;
+  return same(h.Supplier,it.Supplier)
+      && num(h['Purchase Rate'])===num(it['Purchase Rate'])
+      && String(h.SKU||'').trim()===String(it.SKU||'').trim();
+}
+
 function renderHistory(){
   const code=histItem,it=itemByCode(code);
   const rows=historyFor(code);
@@ -2793,17 +2814,19 @@ function renderHistory(){
     (rows.length?rows.map(h=>{
     const total=entryTotalCost(h),quote=!num(h.Qty);
     const isBest=same(h.Supplier,best)&&same(h['Entry ID'],(opts[0].entry||{})['Entry ID']);
-    return `<div class="hist-row ${isBest?'best':''}">
+    const inUse=historyInUse(h,it);
+    return `<div class="hist-row ${inUse?'inuse':isBest?'best':''}">
       <div>
         <div class="hist-v">${esc(h.Supplier)}
+          ${inUse?'<span class="tag-use">IN THIS ORDER</span>':''}
           ${quote?'<span class="tag-quote">QUOTE</span>':''}
-          ${same(h.Supplier,it&&it.Supplier)?'<span class="tag-cur">CURRENT</span>':''}</div>
+          ${same(h.Supplier,it&&it.Supplier)?'<span class="tag-cur">MODULE\u2019S VENDOR</span>':''}</div>
         <div class="hist-meta">${esc(fmtDate(h.Date))}${h.SKU?' · SKU '+esc(h.SKU):''}${num(h.Qty)?' · '+num(h.Qty)+' '+esc(it&&it.Unit||'pcs'):''}${h.Ref?' · '+esc(h.Ref):''}${h.By?' · '+esc(h.By):''}</div>
       </div>
       <div class="hist-price"><span class="r">${money(h['Purchase Rate'],0)}</span>
         <span class="l">${money(total)} total cost</span></div>
       ${h.Comments?`<div class="hist-cmt">${esc(h.Comments)}</div>`:''}
-      ${role==='admin'?`<div class="hist-acts">
+      ${role==='admin'&&!inUse?`<div class="hist-acts">
         <button class="act-btn primary" onclick="poUseVendor('${esc(code)}','${esc(h['Entry ID'])}')">Use in purchase</button>
       </div>`:''}
     </div>`;
@@ -3437,18 +3460,23 @@ function poVendorRows(v){
   const p=purchaseList();
   return (p.groups[v]||[]).filter(r=>!r.skip&&r.qty>0);
 }
+/**
+ * The enquiry we send a vendor: what we want and how many, nothing about money.
+ * Rates are our own record — a figure we hold from a past invoice or a quote we
+ * were given elsewhere — so quoting it back at them anchors the price and can be
+ * plain wrong. We ask them to price it. The Excel export still carries the rates
+ * for our side of the order.
+ */
 function waVendorOrder(v){
   const rows=poVendorRows(v);
   if(!rows.length){alert('Nothing to order from '+v+'.');return}
   const L=['*ElectroBotics — Purchase order*','','Vendor: '+v,'Date: '+fmtDate(today()),''];
   rows.forEach((r,i)=>{
     L.push(`${i+1}. ${r.name}`);
-    L.push(`   ${r.sku?'SKU '+r.sku+' · ':''}${r.qty} ${r.unit||''} × ${CURRENCY}${r.rate} = ${CURRENCY}${Math.round(r.value).toLocaleString('en-IN')}`);
+    L.push(`   ${r.sku?'SKU '+r.sku+' · ':''}Qty ${r.qty}${r.unit?' '+r.unit:''}`);
   });
   L.push('');
-  L.push('*Total: '+CURRENCY+Math.round(rows.reduce((s,r)=>s+r.value,0)).toLocaleString('en-IN')+'*');
-  L.push('');
-  L.push('Please confirm availability and delivery time.');
+  L.push('Please confirm availability, price and delivery time.');
   L.push('');
   L.push('*ElectroBotics*');
   openWa(v,L.join('\n'));
