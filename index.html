@@ -1092,11 +1092,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div class="pb-title">Log this as a purchase <span style="text-transform:none;letter-spacing:0;font-weight:400;">— builds the buying-options history</span></div>
         <div class="form-grid" style="gap:0 14px;">
           <div class="form-row"><label>Vendor</label><div class="combo">
-            <select id="mv_Sup_sel" onchange="onComboSelect('mv_Sup')"></select>
-            <input type="text" id="mv_Sup_new" placeholder="New vendor" style="display:none;">
-            <button type="button" class="combo-back" id="mv_Sup_back" onclick="comboBack('mv_Sup')" style="display:none;">↩</button>
+            <select id="mv_Sup_sel" onchange="onComboSelect('mv_Sup');mvFillFromVendor()"></select>
+            <input type="text" id="mv_Sup_new" placeholder="New vendor" style="display:none;" onchange="mvFillFromVendor()">
+            <button type="button" class="combo-back" id="mv_Sup_back" onclick="comboBack('mv_Sup');mvFillFromVendor()" style="display:none;">↩</button>
           </div></div>
           <div class="form-row"><label>Vendor SKU</label><input type="text" id="mv_SKU" placeholder="their part number"></div>
+          <div class="form-row full"><div class="hint" id="mv_PrefillNote" style="margin:0 0 6px;"></div></div>
           <div class="form-row"><label>Purchase Rate ₹</label><input type="number" step="0.01" id="mv_Rate" oninput="mvPurchasePreview()" placeholder="per unit"></div>
           <div class="form-row"><label>Shipping %</label><input type="number" step="0.01" id="mv_Ship" oninput="mvPurchasePreview()" placeholder="0"></div>
           <div class="form-row"><label>GST %</label><input type="number" step="0.01" id="mv_GST" oninput="mvPurchasePreview()" placeholder="18"></div>
@@ -2802,6 +2803,33 @@ function historyInUse(h,it){
       && String(h.SKU||'').trim()===String(it.SKU||'').trim();
 }
 
+/**
+ * A quote can be deleted; a purchase cannot. A quote is a price someone offered —
+ * once you have actually bought from them it is clutter, and nothing depends on
+ * it. An entry with a quantity is the record of what you really paid, which is
+ * the whole point of this list, so it is removed only in the sheet.
+ */
+async function deleteQuote(id){
+  const h=PHIST.find(x=>same(x['Entry ID'],id));if(!h)return;
+  if(num(h.Qty)){alert('Only quotes can be deleted here. This entry records stock you actually received — remove it from the PurchaseHistory tab if it is wrong.');return}
+  if(!confirm('Delete the quote from '+h.Supplier+' at '+money(h['Purchase Rate'],0)+'?'))return;
+  const msg=byId('h_Msg');
+  msg.innerHTML='<span class="spinner"></span>Deleting…';msg.className='modal-msg saving';
+  const btns=[...document.querySelectorAll('#histList .hist-del')];
+  btns.forEach(b=>b.disabled=true);
+  const r=await post({action:'deletePurchase',id:id});
+  btns.forEach(b=>b.disabled=false);
+  if(!r.ok){showErr(msg,'Could not delete:',r);return}
+  PHIST=PHIST.filter(x=>!same(x['Entry ID'],id));
+  const wasPicked=poVendor[histItem]&&same(poVendor[histItem].entryId,id);
+  if(wasPicked)delete poVendor[histItem];   // the order falls back to the module's own vendor
+  renderPurchase();
+  openHistory(histItem);                    // redraws the list and the "set to…" line
+  const m=byId('h_Msg');
+  m.textContent='Quote from '+h.Supplier+' deleted'+(wasPicked?' · this order is back on the module\u2019s own vendor':'')+' ✓';
+  m.className='modal-msg ok';
+}
+
 function renderHistory(){
   const code=histItem,it=itemByCode(code);
   const rows=historyFor(code);
@@ -2826,8 +2854,9 @@ function renderHistory(){
       <div class="hist-price"><span class="r">${money(h['Purchase Rate'],0)}</span>
         <span class="l">${money(total)} total cost</span></div>
       ${h.Comments?`<div class="hist-cmt">${esc(h.Comments)}</div>`:''}
-      ${role==='admin'&&!inUse?`<div class="hist-acts">
-        <button class="act-btn primary" onclick="poUseVendor('${esc(code)}','${esc(h['Entry ID'])}')">Use in purchase</button>
+      ${role==='admin'&&(!inUse||quote)?`<div class="hist-acts">
+        ${!inUse?`<button class="act-btn primary" onclick="poUseVendor('${esc(code)}','${esc(h['Entry ID'])}')">Use in purchase</button>`:''}
+        ${quote?`<button class="act-btn danger hist-del" onclick="deleteQuote('${esc(h['Entry ID'])}')">Delete quote</button>`:''}
       </div>`:''}
     </div>`;
   }).join(''):'<div class="hist-empty">No buying options logged yet.'+(role==='admin'?' They are recorded when you receive stock with a vendor named.':'')+'</div>');
@@ -2881,7 +2910,7 @@ function applyMoveDefaults(m){
 
 function openMove(itemCode,centreCode,forceMode){
   if(role!=='admin')return;
-  byId('mv_ItemHost').innerHTML=pickerHTML('mvItem',itemCode||'','Search module, item code or SKU…','renderMoveBalances');
+  byId('mv_ItemHost').innerHTML=pickerHTML('mvItem',itemCode||'','Search module, item code or SKU…','mvItemChanged');
   pickerInit('mvItem');
   const locLabels=allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']);
   fillSelect('mv_From','',locLabels);fillSelect('mv_To','',locLabels);
@@ -2909,14 +2938,45 @@ function mvPrefillPurchase(){
   const it=itemByCode(pickerValue('mvItem'));
   buildCombos();
   setComboValue('mv_Sup',it?(it.Supplier||''):'');
-  byId('mv_SKU').value=it?(it.SKU||''):'';
-  byId('mv_Rate').value=it?num(it['Purchase Rate'])||'':'';
-  const c=it?costOf(it):{shipPc:'',gstPc:'',handlePc:''};
-  byId('mv_Ship').value=it?(c.shipPc||''):'';
-  byId('mv_GST').value=it?(c.gstPc||''):'';
-  byId('mv_Handle').value=it?(c.handlePc||''):'';
   byId('mv_Cmt').value='';
+  mvFillFromVendor();
+}
+
+/**
+ * Fill SKU, rate and the three percentages for the vendor now selected.
+ * Preference order: what we last bought this module from THIS vendor for, then
+ * the module's own record if they are the module's vendor, and otherwise blank —
+ * a vendor we have no price for must not inherit the previous vendor's rate.
+ */
+function mvFillFromVendor(){
+  const code=pickerValue('mvItem'),it=itemByCode(code),sup=comboValue('mv_Sup');
+  const note=byId('mv_PrefillNote');
+  const set=(sku,rate,ship,gst,handle)=>{
+    byId('mv_SKU').value=sku;byId('mv_Rate').value=rate;
+    byId('mv_Ship').value=ship;byId('mv_GST').value=gst;byId('mv_Handle').value=handle;
+  };
+  if(!it){set('','','','','');if(note)note.textContent='';mvPurchasePreview();return}
+  const c=costOf(it);
+  const past=sup?historyFor(code).find(h=>same(h.Supplier,sup)):null;
+  if(past){
+    const pc=k=>blank(past[k])?'':past[k];
+    set(past.SKU||'',num(past['Purchase Rate'])||'',pc('Shipping %'),pc('GST %'),pc('Handling %'));
+    if(note)note.textContent='Filled from what you last paid '+sup+' on '+fmtDate(past.Date)+'. Change anything that has moved.';
+  }else if(sup&&same(sup,it.Supplier)){
+    set(it.SKU||'',num(it['Purchase Rate'])||'',c.shipPc||'',c.gstPc||'',c.handlePc||'');
+    if(note)note.textContent='Filled from the module\u2019s own record.';
+  }else{
+    // new vendor for this module: percentages usually carry, the price does not
+    set('','',c.shipPc||'',c.gstPc||'',c.handlePc||'');
+    if(note)note.textContent=sup?('No record of buying this from '+sup+' before — enter their SKU and rate.'):'';
+  }
   mvPurchasePreview();
+}
+
+/** Module changed: reload balances and re-prefill the vendor block under it. */
+function mvItemChanged(){
+  renderMoveBalances();
+  if(moveMode==='Receipt')mvPrefillPurchase();
 }
 function mvPurchasePreview(){
   const code=pickerValue('mvItem'),it=itemByCode(code);
