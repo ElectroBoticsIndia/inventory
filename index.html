@@ -276,6 +276,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .btn-save:disabled{opacity:.6;cursor:wait}
 .btn-del{font-family:var(--font-mono);font-size:13px;font-weight:600;padding:9px 18px;border:1px solid var(--red);border-radius:9px;background:#fff;color:var(--red);cursor:pointer}
 .btn-del:hover{background:var(--red);color:#fff}
+.btn-del:disabled{opacity:.6;cursor:wait}
+.btn-del:disabled:hover{background:#fff;color:var(--red)}
 
 /* ─── BOM editor ─── */
 .bom-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
@@ -1040,7 +1042,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
             <div class="form-row"><label>Date</label><input type="date" id="i_Date2"></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-            <button class="act-btn primary" onclick="fromItemModal('move')">⇄ Move / receive stock</button>
+            <button class="act-btn primary" onclick="fromItemModal('move')">Update stock</button>
             <button class="act-btn" onclick="fromItemModal('min')">Set centre Min Qty</button>
           </div>
         </div>
@@ -1057,10 +1059,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   </div>
 </div>
 
-<!-- Stock movement -->
+<!-- Update stock (receipt / transfer / issue / recount) -->
 <div class="modal-overlay" id="moveModal">
   <div class="modal-card wide">
-    <div class="modal-head"><h3>Stock Movement</h3><button class="modal-close" onclick="closeModal('moveModal')">&times;</button></div>
+    <div class="modal-head"><h3>Update Stock</h3><button class="modal-close" onclick="closeModal('moveModal')">&times;</button></div>
     <div class="modal-body">
       <div class="move-modes">
         <button class="move-mode active" data-mode="Receipt"  onclick="setMoveMode('Receipt')"><span class="ic">📥</span>Receive<br>purchase</button>
@@ -1071,8 +1073,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
       <div class="form-row"><label>Module <span class="req">*</span></label><div id="mv_ItemHost"></div></div>
       <div class="bal-grid" id="mv_Balances"></div>
       <div class="form-grid" style="gap:0 14px;">
-        <div class="form-row" id="mv_FromRow"><label>From <span class="req">*</span></label><select id="mv_From" onchange="renderMovePreview()"></select></div>
-        <div class="form-row" id="mv_ToRow"><label>To <span class="req">*</span></label><select id="mv_To" onchange="renderMovePreview()"></select></div>
+        <div class="form-row" id="mv_FromRow"><label>From <span class="req">*</span></label><select id="mv_From" onchange="mvTouch('from')"></select></div>
+        <div class="form-row" id="mv_ToRow"><label>To <span class="req">*</span></label><select id="mv_To" onchange="mvTouch('to')"></select></div>
         <div class="form-row"><label id="mv_QtyLabel">Quantity <span class="req">*</span></label><input type="number" step="1" min="0" id="mv_Qty" oninput="renderMovePreview()" placeholder="0"></div>
         <div class="form-row"><label>Reference</label><input type="text" id="mv_Ref" placeholder="Invoice / PO no."></div>
         <div class="form-row full"><label>Note</label><input type="text" id="mv_Note" placeholder="e.g. received from Robu, invoice 4471"></div>
@@ -1560,8 +1562,18 @@ async function loadData(){
   if(!SHEET_ID&&!SHEET_WEBAPP_URL){loadDemoData();_readyResolve();return}
   try{
     if(SHEET_WEBAPP_URL){
-      const res=await fetch(SHEET_WEBAPP_URL+'?action=getAll');
-      const d=await res.json();
+      const res=await fetch(SHEET_WEBAPP_URL+'?action=getAll',{redirect:'follow'});
+      const text=await res.text();
+      let d=null;
+      try{ d=JSON.parse(text) }
+      catch(_){
+        // Google served a page, not data — almost always a sign-in interstitial.
+        console.error('getAll: non-JSON reply',String(text).slice(0,400));
+        throw new Error(looksLikeHtml(text)
+          ? 'Google returned a sign-in page instead of the data. Re-deploy the Apps Script with '+
+            'Who has access: Anyone, or open its /exec URL once in this browser and sign in.'
+          : 'The endpoint replied with something that is not data.');
+      }
       if(d&&d.ok){
         applyPayload(d);
         if(num(d.version)<REQUIRED_BACKEND){staleBackendNotice()}
@@ -1582,9 +1594,13 @@ async function loadData(){
       applyPayload({inventory:g(0),kits:g(1),kitComponents:g(2),centres:g(3),centreStock:g(4),
                     stockMoves:g(5),orders:g(6),sales:g(7),saleItems:g(8),purchaseHistory:g(9),users:g(10)});
       if(r[0].status!=='fulfilled')throw r[0].reason;
-      showConfigError('Read-only mode — <code>SHEET_WEBAPP_URL</code> is not reachable, so nothing can be saved.');
+      showConfigError('Read-only mode — the data is loading straight from the sheet, but '+
+        '<code>SHEET_WEBAPP_URL</code> did not answer, so <b>nothing can be saved</b>.<br>'+esc(e.message));
     }catch(e2){
-      showConfigError('Could not load the sheet: '+esc(e2.message)+'<br>Check the sheet is shared as “Anyone with the link · Viewer” and every tab exists: <code>Inventory</code>, <code>Kits</code>, <code>KitComponents</code>, <code>Centres</code>, <code>CentreStock</code>, <code>StockMoves</code>, <code>Orders</code>, <code>Sales</code>, <code>SaleItems</code>, <code>PurchaseHistory</code>, <code>Users</code>.');
+      // Lead with why the endpoint failed — that is the fixable problem; the gviz
+      // failure underneath it is usually just a consequence.
+      showConfigError('Could not load the sheet.<br><b>Endpoint:</b> '+esc(e.message)+
+        '<br><b>Direct read:</b> '+esc(e2.message)+'<br>Check the sheet is shared as “Anyone with the link · Viewer” and every tab exists: <code>Inventory</code>, <code>Kits</code>, <code>KitComponents</code>, <code>Centres</code>, <code>CentreStock</code>, <code>StockMoves</code>, <code>Orders</code>, <code>Sales</code>, <code>SaleItems</code>, <code>PurchaseHistory</code>, <code>Users</code>.');
       loadDemoData();
     }
   }
@@ -1603,20 +1619,91 @@ function staleBackendNotice(){
 
 function showConfigError(html){const n=byId('configNotice');n.style.display='block';n.innerHTML='<strong>Setup:</strong> '+html;}
 
+/**
+ * Show a failed save. post() writes explanatory messages that carry a little
+ * markup; anything coming back from Apps Script is plain text and gets escaped.
+ */
+function showErr(target,prefix,r){
+  const n=typeof target==='string'?byId(target):target;
+  if(!n)return;
+  const raw=(r&&r.error)||'unknown error';
+  n.innerHTML=esc(prefix)+' '+(r&&r.rich?String(raw):esc(String(raw)));
+  n.className='modal-msg err';
+}
+
+/**
+ * Actions that can be sent twice with no side effect — they overwrite a row with
+ * the values you gave, so repeating one lands on exactly the same result. Only
+ * these are auto-retried when Google hands back a web page instead of an answer.
+ * Anything that appends (a bill, a stock move, a new row) is never retried: the
+ * first attempt may well have succeeded, and a duplicate bill is worse than an
+ * error message.
+ */
+const REPEATABLE = ['updateItem','updateCentre','updateKit','updateOrder','updatePurchase',
+                    'saveKitComponents','setMinLevels','updateSalePayment'];
+
+function looksLikeHtml(t){return /^\s*(<!doctype|<html|<\?xml)/i.test(String(t||''))}
+
+/** Turn a Google HTML page into something a tutor can act on. */
+function explainHtmlResponse(html,action){
+  const h=String(html||'');
+  const signin=/accounts\.google\.com|ServiceLogin|signin\/v\d|Choose an account|Sign in - Google/i.test(h);
+  const denied=/Sorry, unable to open the file|You need permission|Request access/i.test(h);
+  const scriptErr=/Script function not found|Exception:|has not been deployed|TypeError/i.test(h);
+  const repeatable=REPEATABLE.indexOf(action)>=0;
+  const tail=repeatable
+    ? ' Nothing was changed — try again.'
+    : ' <b>Refresh the page and check before retrying</b> — the change may have gone through anyway.';
+  if(signin) return 'Google asked for a sign-in instead of saving.'+
+    ' Open the Apps Script <code>/exec</code> URL once in this browser and sign in, or re-deploy it with'+
+    ' <b>Who has access: Anyone</b> so it never depends on your Google session.'+tail;
+  if(denied) return 'Google refused the request — the deployment is not shared with you.'+
+    ' Re-deploy with <b>Execute as: Me</b> and <b>Who has access: Anyone</b>.'+tail;
+  if(scriptErr) return 'The Apps Script hit an error before it could reply.'+
+    ' Open <b>Extensions → Apps Script → Executions</b> in the sheet to see what failed.'+tail;
+  return 'Google returned a web page instead of a result — usually a momentary Apps Script hiccup.'+tail;
+}
+
+async function postOnce(body){
+  const res=await fetch(SHEET_WEBAPP_URL,{method:'POST',redirect:'follow',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+  const text=await res.text();
+  try{ return {ok:true,json:JSON.parse(text)} }
+  catch(_){ return {ok:false,body:text,status:res.status} }
+}
+
 async function post(body){
   if(!SHEET_WEBAPP_URL){
     if(demoMode)return {ok:true,demo:true};
     return {ok:false,error:'Save endpoint not configured'};
   }
-  try{
-    const res=await fetch(SHEET_WEBAPP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
-    const out=await res.json();
-    if(out&&!out.ok&&/unknown action/i.test(String(out.error||''))){
-      staleBackendNotice();
-      out.error='your Apps Script deployment is out of date — see the note at the top of the page';
+  const action=String(body&&body.action||'');
+  let last=null;
+  // One quiet retry, but only for an action that is safe to repeat.
+  const attempts=REPEATABLE.indexOf(action)>=0?2:1;
+  for(let i=0;i<attempts;i++){
+    if(i)await new Promise(r=>setTimeout(r,900));
+    try{
+      const r=await postOnce(body);
+      if(r.ok){
+        const out=r.json;
+        if(out&&!out.ok&&/unknown action/i.test(String(out.error||''))){
+          staleBackendNotice();
+          out.error='your Apps Script deployment is out of date — see the note at the top of the page';
+        }
+        return out;
+      }
+      last={ok:false,rich:true,error:explainHtmlResponse(r.body,action),raw:r.body,status:r.status};
+      console.error('post: non-JSON reply (status '+r.status+')',String(r.body).slice(0,400));
+      if(!looksLikeHtml(r.body))last.error='The server replied with something that is not a result. '+
+        (REPEATABLE.indexOf(action)>=0?'Nothing was changed — try again.':'Refresh and check before retrying.');
+    }catch(e){
+      console.error('post error',e);
+      last={ok:false,rich:true,error:'Could not reach Google ('+esc(e.message)+'). Check your connection'+
+        (REPEATABLE.indexOf(action)>=0?' and try again.':', then refresh and check before retrying.')};
     }
-    return out;
-  }catch(e){console.error('post error',e);return {ok:false,error:e.message}}
+  }
+  return last;
 }
 
 // ─── Demo data ──────────────────────────────────────────────────
@@ -1978,7 +2065,7 @@ function renderCentreDetail(){
         <td class="num">${centralQty(ic)}</td><td class="num">${totalQty(ic)}</td>
         <td>${badge(st)}</td>
         ${showAdvice?`<td>${row?adviceHtml(row):'<span class="advice ok">OK</span>'}</td>`:''}
-        ${role==='admin'?`<td><button class="act-btn primary" onclick="openMove('${esc(ic)}','${esc(code)}')">Move</button></td>`:''}</tr>`;
+        ${role==='admin'?`<td><button class="act-btn primary" onclick="openMove('${esc(ic)}','${esc(code)}')">${central?'Receive':'Move'}</button></td>`:''}</tr>`;
     }).join(''):`<tr><td colspan="10" class="tbl-empty">${cdView==='short'?'Nothing below its Min Qty here. 🎉':'No stock recorded at this location yet.'}</td></tr>`)+'</tbody>';
 
   const mv=MOVES.filter(m=>same(m.From,code)||same(m.To,code)).slice().reverse();
@@ -2263,7 +2350,7 @@ function renderLow(){
       <td class="num" style="color:var(--text-light)">${r.min}</td>
       <td class="num"><b>${r.short}</b></td><td class="num">${r.centralQty}</td>
       <td>${adviceHtml(r)}</td>
-      <td><button class="act-btn primary" onclick="openMove('${esc(r.code)}','${esc(r.centreCode)}')">Move</button></td></tr>`).join('')
+      <td><button class="act-btn primary" onclick="openMove('${esc(r.code)}','${esc(r.centreCode)}')">${r.isCentral?'Receive':'Move'}</button></td></tr>`).join('')
     :'<tr><td colspan="9" class="tbl-empty">No location is below its Min Qty. 🎉</td></tr>')+'</tbody>';
 }
 
@@ -2437,7 +2524,7 @@ function renderInventory(){
         <td>${badge(companyState(ic))}</td>
         <td class="price-cell"><span class="p">${money(ebCostOf(i),0)}</span><span class="pm">${same(i['Price Mode'],'Manual')?'manual':'+'+MARGIN_PCT+'%'}</span></td>
         <td><div class="row-acts">
-          <button class="act-btn" onclick="openMove('${esc(ic)}')">Move</button>
+          <button class="act-btn" onclick="openMove('${esc(ic)}')">Update Stock</button>
           <button class="act-btn" onclick="openMins('${esc(ic)}')">Min Qty</button>
           <button class="act-btn primary" onclick="openItemForm('${esc(ic)}')">Edit</button>
         </div></td></tr>`;
@@ -2552,7 +2639,7 @@ async function saveItem(){
   const openQty=editingItem?0:num(byId('i_OpenQty').value);
   const r=await post({action:editingItem?'updateItem':'addItem',code:editingItem||rec['Item Code'],item:rec,
                       openingLocation:openLoc,openingQty:openQty,by:(user&&user.email)||''});
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'unknown error');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   if(editingItem){const idx=INV.findIndex(i=>same(i['Item Code'],editingItem));if(idx>-1)INV[idx]=Object.assign({},INV[idx],rec)}
   else{
     INV.push(rec);
@@ -2569,6 +2656,18 @@ async function saveItem(){
   refreshAll();
   setTimeout(()=>closeModal('itemModal'),500);
 }
+/**
+ * Shared feedback for every delete: spinner in the modal's message line and the
+ * Delete button locked while the round-trip is in flight, so an impatient second
+ * click can't fire a second request. Returns the function that unlocks it.
+ */
+function delStart(msgId,btnId){
+  const m=byId(msgId),b=byId(btnId);
+  if(m){m.innerHTML='<span class="spinner"></span>Deleting…';m.className='modal-msg saving'}
+  if(b)b.disabled=true;
+  return function(){if(b)b.disabled=false};
+}
+
 async function deleteItem(){
   if(!editingItem)return;
   const used=BOM.filter(b=>same(b['Item Code'],editingItem));
@@ -2577,9 +2676,10 @@ async function deleteItem(){
   if(held>0)warn+='\n\nThere are still '+held+' units in stock across locations.';
   if(used.length)warn+='\n\nIt is used in '+used.length+' kit BOM row(s) — those rows will point at a missing item.';
   if(!confirm('Delete '+editingItem+' from inventory?'+warn))return;
-  const msg=byId('i_Msg');msg.innerHTML='<span class="spinner"></span>Deleting…';msg.className='modal-msg saving';
+  const msg=byId('i_Msg'),done=delStart('i_Msg','i_DelBtn');
   const r=await post({action:'deleteItem',code:editingItem});
-  if(!r.ok){msg.textContent='Could not delete: '+(r.error||'');msg.className='modal-msg err';return}
+  done();
+  if(!r.ok){showErr(msg,'Could not delete:',r);return}
   INV=INV.filter(i=>!same(i['Item Code'],editingItem));
   CSTOCK=CSTOCK.filter(r2=>!same(r2['Item Code'],editingItem));
   refreshAll();closeModal('itemModal');
@@ -2643,7 +2743,7 @@ function renderHistory(){
 
 function histShowForm(id){
   histEditId=id||null;
-  const it=itemByCode(histItem);
+  const it=itemByCode(histItem)||{};
   const h=id?PHIST.find(x=>same(x['Entry ID'],id)):null;
   byId('histFormTitle').textContent=h?'Edit buying option':'Add a buying option';
   setComboValue('h_Sup',h?(h.Supplier||''):(it.Supplier||''));
@@ -2668,7 +2768,7 @@ function histShowForm(id){
 function histPreview(){
   const c=costOf({'Purchase Rate':byId('h_Rate').value,'Shipping %':byId('h_Ship').value,
     'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
-  const it=itemByCode(histItem);
+  const it=itemByCode(histItem)||{};
   const curRate=num(it['Purchase Rate']),curTotal=totalCostOf(it);
   const dRate=c.base-curRate,dTotal=c.total-curTotal;
   const cmp=(d,what)=>Math.abs(d)<0.005?`<b>same ${what}</b>`
@@ -2703,7 +2803,7 @@ async function savePurchaseEntry(){
   const r=histEditId
     ? await post({action:'updatePurchase',id:histEditId,entry:entry,makeCurrent:makeCurrent})
     : await post({action:'addPurchase',entry:entry,makeCurrent:makeCurrent});
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   if(histEditId){const i=PHIST.findIndex(x=>same(x['Entry ID'],histEditId));if(i>-1)PHIST[i]=Object.assign({},PHIST[i],entry)}
   else PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
   if(makeCurrent)applyCurrentLocally(entry);
@@ -2730,7 +2830,7 @@ async function histMakeCurrent(id){
     'This changes the total cost and therefore the ElectroBotics price for this module.'))return;
   const msg=byId('h_Msg');msg.innerHTML='<span class="spinner"></span>Updating…';msg.className='modal-msg saving';
   const r=await post({action:'updatePurchase',id:id,entry:h,makeCurrent:true});
-  if(!r.ok){msg.textContent='Could not update: '+(r.error||'');msg.className='modal-msg err';return}
+  if(!r.ok){showErr(msg,'Could not update:',r);return}
   applyCurrentLocally(h);
   msg.textContent=h.Supplier+' is now the current buying option ✓';msg.className='modal-msg ok';
   renderHistory();refreshAll();
@@ -2740,8 +2840,10 @@ async function histMakeCurrent(id){
 async function deletePurchaseEntry(){
   if(!histEditId)return;
   if(!confirm('Delete this buying option from the history?'))return;
+  const done=delStart('h_Msg','h_DelBtn');
   const r=await post({action:'deletePurchase',id:histEditId});
-  if(!r.ok){byId('h_Msg').textContent='Could not delete: '+(r.error||'');byId('h_Msg').className='modal-msg err';return}
+  done();
+  if(!r.ok){showErr('h_Msg','Could not delete:',r);return}
   PHIST=PHIST.filter(x=>!same(x['Entry ID'],histEditId));
   histEditId=null;byId('histForm').style.display='none';
   byId('h_SaveBtn').style.display='none';byId('h_DelBtn').style.display='none';
@@ -2762,16 +2864,45 @@ function optionsNote(code,limit,exclude){
 
 // ─── Stock movement ─────────────────────────────────────────────
 let moveMode='Receipt';
+/** The location the modal was opened against, if any (a centre row, a low-stock row). */
+let mvCtx=null, mvTouchedFrom=false, mvTouchedTo=false;
+function mvTouch(which){if(which==='from')mvTouchedFrom=true;else mvTouchedTo=true;renderMovePreview()}
+
+/**
+ * Each mode has an obvious starting point, and it is not the same one:
+ *   Receipt  — a purchase lands in the CENTRAL STORE. That is where kit and
+ *              purchase maths look, so anywhere else would quietly mislead.
+ *   Transfer — out of central, into the centre you came from.
+ *   Issue    — the location you came from.
+ *   Recount  — likewise.
+ * A location you picked yourself is never overwritten by a later mode switch.
+ */
+function applyMoveDefaults(m){
+  const central=centralCode();
+  const cur=f=>String(byId(f).value||'').split(' — ')[0];
+  const firstCentre=(sellingCentres()[0]||{})['Centre Code']||central;
+  if(m==='Receipt'){
+    if(!mvTouchedTo)setSelCode('mv_To',central);
+  }else if(m==='Transfer'){
+    if(!mvTouchedFrom)setSelCode('mv_From',central);
+    const to=cur('mv_To');
+    // central → central is not a transfer; pick a real destination
+    if(!mvTouchedTo||!to||same(to,cur('mv_From')))
+      setSelCode('mv_To',(mvCtx&&!same(mvCtx,central))?mvCtx:firstCentre);
+  }else if(m==='Issue'){
+    if(!mvTouchedFrom)setSelCode('mv_From',mvCtx||central);
+  }else{                                    // Recount
+    if(!mvTouchedTo)setSelCode('mv_To',mvCtx||central);
+  }
+}
+
 function openMove(itemCode,centreCode,forceMode){
   if(role!=='admin')return;
   byId('mv_ItemHost').innerHTML=pickerHTML('mvItem',itemCode||'','Search module, item code or SKU…','renderMoveBalances');
   pickerInit('mvItem');
   const locLabels=allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']);
   fillSelect('mv_From','',locLabels);fillSelect('mv_To','',locLabels);
-  setSelCode('mv_From',centralCode());
-  if(centreCode&&!same(centreCode,centralCode()))setSelCode('mv_To',centreCode);
-  else setSelCode('mv_To',(sellingCentres()[0]||{})['Centre Code']||centralCode());
-  if(centreCode&&same(centreCode,centralCode()))setSelCode('mv_To',centreCode);
+  mvCtx=centreCode||null;mvTouchedFrom=false;mvTouchedTo=false;
   byId('mv_Qty').value='';byId('mv_Ref').value='';byId('mv_Note').value='';
   byId('mv_Msg').textContent='';byId('mv_Msg').className='modal-msg';byId('mv_SaveBtn').disabled=false;
   byId('mv_MakeCurrent').checked=false;
@@ -2788,6 +2919,7 @@ function setMoveMode(m){
   byId('mv_FromRow').querySelector('label').innerHTML=(m==='Issue')?'Location <span class="req">*</span>':'From <span class="req">*</span>';
   byId('mv_QtyLabel').innerHTML=(m==='Recount')?'Counted quantity <span class="req">*</span>':'Quantity <span class="req">*</span>';
   byId('mv_PurchaseBlock').style.display=(m==='Receipt')?'':'none';
+  applyMoveDefaults(m);
   renderMoveBalances();
 }
 /** Seed the purchase block from the module's current buying option. */
@@ -2878,7 +3010,7 @@ async function saveMove(){
     body.purchase=entry;body.makeCurrent=byId('mv_MakeCurrent').checked;
   }
   const r=await post(body);
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   applyMoveLocally(body,r.moveId);
   if(entry){
     PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
@@ -2930,7 +3062,7 @@ async function saveMins(){
     centreCode:r.dataset.centre,minQty:r.querySelector('.min-inp').value.trim()}));
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
   const r=await post({action:'setMinLevels',itemCode:minItem,levels:levels});
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   levels.forEach(l=>{
     let row=csRow(minItem,l.centreCode);
     if(!row){row={'Centre Code':l.centreCode,'Item Code':minItem,'Qty':'0','Min Qty':''};CSTOCK.push(row)}
@@ -2969,7 +3101,7 @@ async function saveCentre(){
   if(rec.Type==='Central'&&otherCentral){msg.textContent='“'+otherCentral['Centre Name']+'” is already the central store. Change it first.';msg.className='modal-msg err';return}
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
   const r=await post({action:editingCentre?'updateCentre':'addCentre',code:editingCentre||rec['Centre Code'],centre:rec});
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   if(editingCentre){const i=CENTRES.findIndex(c=>same(c['Centre Code'],editingCentre));if(i>-1)CENTRES[i]=Object.assign({},CENTRES[i],rec)}
   else{
     CENTRES.push(rec);
@@ -2984,8 +3116,10 @@ async function deleteCentre(){
   const held=INV.reduce((s,i)=>s+qtyAt(i['Item Code'],editingCentre),0);
   if(held>0){alert('This centre still holds '+held+' units. Transfer them out first, then delete.');return}
   if(!confirm('Delete centre '+editingCentre+'?'))return;
+  const done=delStart('c_Msg','c_DelBtn');
   const r=await post({action:'deleteCentre',code:editingCentre});
-  if(!r.ok){byId('c_Msg').textContent='Could not delete: '+(r.error||'');byId('c_Msg').className='modal-msg err';return}
+  done();
+  if(!r.ok){showErr('c_Msg','Could not delete:',r);return}
   CENTRES=CENTRES.filter(c=>!same(c['Centre Code'],editingCentre));
   CSTOCK=CSTOCK.filter(r2=>!same(r2['Centre Code'],editingCentre));
   refreshAll();closeModal('centreModal');
@@ -3015,7 +3149,7 @@ async function saveKit(){
   if(!editingKit&&kitByCode(rec['Kit Code'])){msg.textContent='That kit code already exists.';msg.className='modal-msg err';return}
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
   const r=await post({action:editingKit?'updateKit':'addKit',code:editingKit||rec['Kit Code'],kit:rec});
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   if(editingKit){const i=KITS.findIndex(k=>same(k['Kit Code'],editingKit));if(i>-1)KITS[i]=Object.assign({},KITS[i],rec)}
   else KITS.push(rec);
   msg.textContent='Saved ✓';msg.className='modal-msg ok';
@@ -3024,8 +3158,10 @@ async function saveKit(){
 async function deleteKit(){
   if(!editingKit)return;
   if(!confirm('Delete kit '+editingKit+' and its component list?'))return;
+  const done=delStart('k_Msg','k_DelBtn');
   const r=await post({action:'deleteKit',code:editingKit});
-  if(!r.ok){byId('k_Msg').textContent='Could not delete: '+(r.error||'');byId('k_Msg').className='modal-msg err';return}
+  done();
+  if(!r.ok){showErr('k_Msg','Could not delete:',r);return}
   KITS=KITS.filter(k=>!same(k['Kit Code'],editingKit));
   BOM=BOM.filter(b=>!same(b['Kit Code'],editingKit));
   refreshAll();closeModal('kitModal');
@@ -3087,7 +3223,7 @@ async function saveBom(){
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
   const payload=rows.map(r=>({'Kit Code':bomKit,'Item Code':r.code,'Qty':String(r.qty)}));
   const r=await post({action:'saveKitComponents',kitCode:bomKit,components:payload});
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   BOM=BOM.filter(b=>!same(b['Kit Code'],bomKit)).concat(payload);
   msg.textContent='Saved ✓';msg.className='modal-msg ok';
   refreshAll();
@@ -3140,7 +3276,7 @@ async function saveOrder(){
     'Required By':byId('o_By').value,Status:byId('o_Status').value,Notes:byId('o_Notes').value.trim(),Created:today()};
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
   const r=await post({action:editingOrder?'updateOrder':'addOrder',id:rec['Order ID'],order:rec});
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';btn.disabled=false;return}
+  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   if(editingOrder){const i=ORDERS.findIndex(o=>same(o['Order ID'],editingOrder));if(i>-1)ORDERS[i]=Object.assign({},ORDERS[i],rec)}
   else ORDERS.push(rec);
   msg.textContent='Saved ✓';msg.className='modal-msg ok';
@@ -3149,8 +3285,10 @@ async function saveOrder(){
 async function deleteOrder(){
   if(!editingOrder)return;
   if(!confirm('Delete order '+editingOrder+'?'))return;
+  const done=delStart('o_Msg','o_DelBtn');
   const r=await post({action:'deleteOrder',id:editingOrder});
-  if(!r.ok){byId('o_Msg').textContent='Could not delete: '+(r.error||'');byId('o_Msg').className='modal-msg err';return}
+  done();
+  if(!r.ok){showErr('o_Msg','Could not delete:',r);return}
   ORDERS=ORDERS.filter(o=>!same(o['Order ID'],editingOrder));
   refreshAll();closeModal('orderModal');
 }
@@ -3524,7 +3662,7 @@ async function saveSale(){
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving bill…';msg.className='modal-msg saving';
   const r=await post({action:'saveSale',sale:sale,items:items,centre:centre});
   btn.disabled=false;
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';return}
+  if(!r.ok){showErr(msg,'Could not save:',r);return}
   if(r.billNo&&r.billNo!==billNo){sale['Bill No']=r.billNo;items.forEach(i=>i['Bill No']=r.billNo)}
   SALES.push(sale);SALEITEMS=SALEITEMS.concat(items);
   items.forEach(i=>{
@@ -3648,7 +3786,7 @@ async function savePayment(){
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
   const r=await post({action:'updateSalePayment',billNo:s['Bill No'],patch:patch});
   btn.disabled=false;
-  if(!r.ok){msg.textContent='Could not save: '+(r.error||'');msg.className='modal-msg err';return}
+  if(!r.ok){showErr(msg,'Could not save:',r);return}
   Object.keys(patch).forEach(k=>{s[k]=patch[k]});
   msg.textContent=status==='Paid'?('Bill '+s['Bill No']+' marked Paid ✓'):('Bill '+s['Bill No']+' moved back to Pending.');
   msg.className='modal-msg ok';
