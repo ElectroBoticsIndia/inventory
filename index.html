@@ -1096,7 +1096,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
           <div class="form-row full"><label>Comments</label><input type="text" id="mv_Cmt" placeholder="lead time, MOQ, packaging, why this vendor…"></div>
         </div>
         <div class="move-preview" id="mv_PurchasePreview" style="margin-bottom:10px;"></div>
-        <label class="manual-toggle" style="margin:0 0 12px;"><input type="checkbox" id="mv_MakeCurrent"> Make this the current buying option for the module</label>
+        <div class="hint" style="margin:0 0 12px;">Recorded as a buying option for this module. It does <b>not</b> change the module's rate — edit the module in Inventory to do that.</div>
       </div>
     </div>
     <div class="modal-msg" id="mv_Msg"></div>
@@ -1130,8 +1130,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
           <div class="form-row"><label>Handling %</label><input type="number" step="0.01" id="h_Handle" oninput="histPreview()"></div>
           <div class="form-row"><label>Date</label><input type="date" id="h_Date"></div>
           <div class="form-row"><label>Reference</label><input type="text" id="h_Ref" placeholder="invoice / quote no."></div>
-          <div class="form-row"><label>&nbsp;</label><div style="height:38px;display:flex;align-items:center;">
-            <label class="manual-toggle" style="margin:0;"><input type="checkbox" id="h_MakeCurrent"> Make current</label></div></div>
           <div class="form-row full"><label>Comments</label><textarea id="h_Cmt" rows="2" placeholder="lead time, MOQ, packaging, why you'd use this vendor…"></textarea></div>
         </div>
         <div class="move-preview" id="h_Preview"></div>
@@ -2735,7 +2733,7 @@ function renderHistory(){
       ${h.Comments?`<div class="hist-cmt">${esc(h.Comments)}</div>`:''}
       ${role==='admin'?`<div class="hist-acts">
         <button class="act-btn" onclick="histShowForm('${esc(h['Entry ID'])}')">Edit</button>
-        <button class="act-btn primary" onclick="histMakeCurrent('${esc(h['Entry ID'])}')">Use as current</button>
+        <button class="act-btn primary" onclick="histUseInInventory('${esc(h['Entry ID'])}')">Use in Inventory →</button>
       </div>`:''}
     </div>`;
   }).join(''):'<div class="hist-empty">No buying options logged yet.'+(role==='admin'?' Add one, or record a vendor when you receive stock.':'')+'</div>');
@@ -2756,7 +2754,6 @@ function histShowForm(id){
   byId('h_Date').value=h?toDateInput(h.Date):today();
   byId('h_Ref').value=h?(h.Ref||''):'';
   byId('h_Cmt').value=h?(h.Comments||''):'';
-  byId('h_MakeCurrent').checked=false;
   byId('histForm').style.display='';
   byId('h_SaveBtn').style.display='';byId('h_SaveBtn').disabled=false;
   byId('h_DelBtn').style.display=h?'':'none';
@@ -2798,43 +2795,43 @@ async function savePurchaseEntry(){
   const entry=histEntryFromForm();
   if(!entry.Supplier){msg.textContent='Pick or type a vendor.';msg.className='modal-msg err';return}
   if(byId('h_Rate').value.trim()===''){msg.textContent='Enter the purchase rate.';msg.className='modal-msg err';return}
-  const makeCurrent=byId('h_MakeCurrent').checked;
   btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
   const r=histEditId
-    ? await post({action:'updatePurchase',id:histEditId,entry:entry,makeCurrent:makeCurrent})
-    : await post({action:'addPurchase',entry:entry,makeCurrent:makeCurrent});
+    ? await post({action:'updatePurchase',id:histEditId,entry:entry})
+    : await post({action:'addPurchase',entry:entry});
   if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   if(histEditId){const i=PHIST.findIndex(x=>same(x['Entry ID'],histEditId));if(i>-1)PHIST[i]=Object.assign({},PHIST[i],entry)}
   else PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
-  if(makeCurrent)applyCurrentLocally(entry);
   msg.textContent='Saved ✓';msg.className='modal-msg ok';
   byId('histForm').style.display='none';byId('h_SaveBtn').style.display='none';byId('h_DelBtn').style.display='none';
   histEditId=null;renderHistory();refreshAll();
 }
 
-function applyCurrentLocally(entry){
-  const i=INV.findIndex(x=>same(x['Item Code'],entry['Item Code']));
-  if(i<0)return;
-  const patch={Supplier:entry.Supplier,'Purchase Rate':entry['Purchase Rate']};
-  if(entry.SKU)patch.SKU=entry.SKU;
-  ['Shipping %','GST %','Handling %'].forEach(k=>{if(!blank(entry[k]))patch[k]=entry[k]});
-  const tc=entry['Total Cost']||entry['Landed Cost'];
-  if(tc)patch['Total Cost']=tc;
-  INV[i]=Object.assign({},INV[i],patch);
-}
-
-async function histMakeCurrent(id){
+/**
+ * Buying options are a RECORD of what we paid, not a control on what the module
+ * costs. Editing one never touches the Inventory row — the rate, the total cost,
+ * the EB price and every kit built on them change in one place only: the item
+ * form. This button carries the figures over and opens that form, so the change
+ * still happens there, deliberately, behind a Save.
+ */
+function histUseInInventory(id){
   const h=PHIST.find(x=>same(x['Entry ID'],id));if(!h)return;
-  const it=itemByCode(h['Item Code']);
-  if(!confirm('Make '+h.Supplier+' at '+money(h['Purchase Rate'],0)+' the current buying option?\n\n'+
-    'This changes the total cost and therefore the ElectroBotics price for this module.'))return;
-  const msg=byId('h_Msg');msg.innerHTML='<span class="spinner"></span>Updating…';msg.className='modal-msg saving';
-  const r=await post({action:'updatePurchase',id:id,entry:h,makeCurrent:true});
-  if(!r.ok){showErr(msg,'Could not update:',r);return}
-  applyCurrentLocally(h);
-  msg.textContent=h.Supplier+' is now the current buying option ✓';msg.className='modal-msg ok';
-  renderHistory();refreshAll();
-  byId('histSub').innerHTML=`${esc(histItem)} · current: <b>${esc(h.Supplier)}</b> at ${money(h['Purchase Rate'],0)}`;
+  const code=h['Item Code'];
+  if(!itemByCode(code)){alert('That module is no longer in the inventory.');return}
+  closeModal('histModal');
+  openItemForm(code);
+  setComboValue('i_Sup',h.Supplier||'');
+  if(h.SKU)byId('i_SKU').value=h.SKU;
+  byId('i_Rate').value=num(h['Purchase Rate'])||'';
+  byId('i_Round').value='';
+  ['Shipping %','GST %','Handling %'].forEach((k,n)=>{
+    if(!blank(h[k]))byId(['i_Ship','i_GST','i_Handle'][n]).value=h[k];
+  });
+  recalcCost();
+  const m=byId('i_Msg');
+  m.innerHTML='Filled in from <b>'+esc(h.Supplier||'that buying option')+'</b> at '+money(h['Purchase Rate'],0)+
+    '. <b>Nothing has changed yet</b> — press Save to make this the module\'s rate.';
+  m.className='modal-msg';
 }
 
 async function deletePurchaseEntry(){
@@ -2905,7 +2902,6 @@ function openMove(itemCode,centreCode,forceMode){
   mvCtx=centreCode||null;mvTouchedFrom=false;mvTouchedTo=false;
   byId('mv_Qty').value='';byId('mv_Ref').value='';byId('mv_Note').value='';
   byId('mv_Msg').textContent='';byId('mv_Msg').className='modal-msg';byId('mv_SaveBtn').disabled=false;
-  byId('mv_MakeCurrent').checked=false;
   mvPrefillPurchase();
   setMoveMode(forceMode||(centreCode&&!same(centreCode,centralCode())?'Transfer':'Receipt'));
   openModalEl('moveModal');
@@ -3007,15 +3003,12 @@ async function saveMove(){
       'GST %':byId('mv_GST').value.trim(),'Handling %':byId('mv_Handle').value.trim(),
       'Total Cost':c.total.toFixed(2),'Qty':String(qty),'Ref':byId('mv_Ref').value.trim(),
       'Comments':byId('mv_Cmt').value.trim(),'By':(user&&user.email)||''};
-    body.purchase=entry;body.makeCurrent=byId('mv_MakeCurrent').checked;
+    body.purchase=entry;
   }
   const r=await post(body);
   if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
   applyMoveLocally(body,r.moveId);
-  if(entry){
-    PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
-    if(byId('mv_MakeCurrent').checked)applyCurrentLocally(entry);
-  }
+  if(entry)PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
   refreshAll();closeModal('moveModal');
 }
 function setQtyAt(itemCode,centreCode,qty){
