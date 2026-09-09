@@ -1046,7 +1046,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <div id="i_EditStock" style="grid-column:1/-1;display:none;">
           <div class="bal-grid" id="i_Balances"></div>
           <div class="form-grid" style="gap:0 14px;">
-            <div class="form-row"><label>Default Min Qty</label><input type="number" step="1" id="i_Min2" placeholder="e.g. 10"><small>Used for a centre that has no level of its own</small></div>
+            <div class="form-row"><label>Default Min Qty</label><input type="number" step="1" id="i_Min2" placeholder="e.g. 10"><small>Used for a centre that has no Min Qty of its own</small></div>
             <div class="form-row"><label>Date</label><input type="date" id="i_Date2"></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
@@ -2503,9 +2503,7 @@ function renderInventory(){
                 (note?`<div class="vendor-note">${note}</div>`:'')})()}
           </td>
           <td class="mono" style="font-size:11px">${esc(fmtDate(i.Date))}</td>
-          <td><div class="row-acts">
-            <button class="act-btn" onclick="openHistory('${esc(i['Item Code'])}')">History</button>
-            <button class="act-btn primary" onclick="openItemForm('${esc(i['Item Code'])}')">Edit</button></div></td></tr>`;
+          <td><div class="row-acts">${invRowActions(i['Item Code'])}</div></td></tr>`;
       }).join(''):'<tr><td colspan="16" class="tbl-empty">No items match these filters.</td></tr>')+'</tbody>';
     return;
   }
@@ -2530,16 +2528,25 @@ function renderInventory(){
         <td class="num"><b>${tq}</b></td><td class="num" style="color:var(--text-light)">${cm}</td>
         <td>${badge(companyState(ic))}</td>
         <td class="price-cell"><span class="p">${money(ebCostOf(i),0)}</span><span class="pm">${same(i['Price Mode'],'Manual')?'manual':'+'+MARGIN_PCT+'%'}</span></td>
-        <td><div class="row-acts">
-          <button class="act-btn" onclick="openMove('${esc(ic)}')">Update Stock</button>
-          <button class="act-btn" onclick="openMins('${esc(ic)}')">Min Qty</button>
-          <button class="act-btn primary" onclick="openItemForm('${esc(ic)}')">Edit</button>
-        </div></td></tr>`;
+        <td><div class="row-acts">${invRowActions(ic)}</div></td></tr>`;
     }).join(''):`<tr><td colspan="${locs.length+8}" class="tbl-empty">No items match these filters.</td></tr>`)+'</tbody>';
 }
 
 // ─── Item form ──────────────────────────────────────────────────
 let editingItem=null;
+/**
+ * The same three actions on every inventory row, in both views. Update Stock is
+ * the highlighted one: receiving and moving stock is the daily job, while a
+ * module's cost record is edited now and then. Per-centre Min Qty sits inside
+ * the item form, next to the Default Min Qty it falls back to.
+ */
+function invRowActions(code){
+  const c=esc(code);
+  return `<button class="act-btn" onclick="openHistory('${c}')">History</button>
+    <button class="act-btn" onclick="openItemForm('${c}')">Edit</button>
+    <button class="act-btn primary" onclick="openMove('${c}')">Update Stock</button>`;
+}
+
 const ITEM_FIELDS={i_Code:'Item Code',i_Name:'Module Name',i_SKU:'SKU',i_Unit:'Unit',i_Rate:'Purchase Rate',
   i_Round:'Round Off Rate',i_Ship:'Shipping %',i_GST:'GST %',i_Handle:'Handling %',
   i_Notes:'Comments'};
