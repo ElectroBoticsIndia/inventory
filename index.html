@@ -1114,35 +1114,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
     <div class="modal-body">
       <div class="modal-sub" id="histSub"></div>
       <div id="histList"></div>
-      <div id="histForm" style="display:none;border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
-        <div class="pb-title" style="font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--accent-dark);margin-bottom:10px;" id="histFormTitle">Add a buying option</div>
-        <div class="form-grid" style="gap:0 14px;">
-          <div class="form-row"><label>Vendor <span class="req">*</span></label><div class="combo">
-            <select id="h_Sup_sel" onchange="onComboSelect('h_Sup')"></select>
-            <input type="text" id="h_Sup_new" placeholder="New vendor" style="display:none;">
-            <button type="button" class="combo-back" id="h_Sup_back" onclick="comboBack('h_Sup')" style="display:none;">↩</button>
-          </div></div>
-          <div class="form-row"><label>Vendor SKU</label><input type="text" id="h_SKU" placeholder="their part number"></div>
-          <div class="form-row"><label>Purchase Rate ₹ <span class="req">*</span></label><input type="number" step="0.01" id="h_Rate" oninput="histPreview()"></div>
-          <div class="form-row"><label>Qty <small style="text-transform:none;letter-spacing:0;">— blank = quote only</small></label><input type="number" step="1" id="h_Qty" placeholder="leave blank for a quote"></div>
-          <div class="form-row"><label>Shipping %</label><input type="number" step="0.01" id="h_Ship" oninput="histPreview()"></div>
-          <div class="form-row"><label>GST %</label><input type="number" step="0.01" id="h_GST" oninput="histPreview()"></div>
-          <div class="form-row"><label>Handling %</label><input type="number" step="0.01" id="h_Handle" oninput="histPreview()"></div>
-          <div class="form-row"><label>Date</label><input type="date" id="h_Date"></div>
-          <div class="form-row"><label>Reference</label><input type="text" id="h_Ref" placeholder="invoice / quote no."></div>
-          <div class="form-row full"><label>Comments</label><textarea id="h_Cmt" rows="2" placeholder="lead time, MOQ, packaging, why you'd use this vendor…"></textarea></div>
-        </div>
-        <div class="move-preview" id="h_Preview"></div>
-      </div>
     </div>
     <div class="modal-msg" id="h_Msg"></div>
     <div class="modal-foot">
-      <button class="btn-del" id="h_DelBtn" onclick="deletePurchaseEntry()" style="display:none;">Delete</button>
-      <button class="act-btn" id="h_AddBtn" onclick="histShowForm()">+ Add buying option</button>
       <button class="btn-download" onclick="exportHistory()">↓ Excel</button>
       <div class="spacer"></div>
       <button class="btn-cancel" onclick="closeModal('histModal')">Close</button>
-      <button class="btn-save" id="h_SaveBtn" onclick="savePurchaseEntry()" style="display:none;">Save</button>
     </div>
   </div>
 </div>
@@ -2097,7 +2074,6 @@ function buildCombos(){
   fillSelect('lowCentreFilter','All locations',allLocations().map(c=>c['Centre Code']+' — '+c['Centre Name']));
   fillSelect('i_OpenLoc','',locLabels);
   fillCombo('mv_Sup',uniq(INV.map(i=>i.Supplier).concat(PHIST.map(h=>h.Supplier))));
-  fillCombo('h_Sup',uniq(INV.map(i=>i.Supplier).concat(PHIST.map(h=>h.Supplier))));
 }
 function fillCombo(fid,values){
   const sel=byId(fid+'_sel');const cur=sel.value;
@@ -2689,21 +2665,23 @@ async function deleteItem(){
 // and at what purchase rate. Ranked on PURCHASE RATE. Each entry also keeps its
 // own shipping/GST/handling %, so Total Cost is shown beside the rate — a cheap
 // rate with heavy freight is still visible without changing the ranking.
-let histItem=null,histEditId=null;
+let histItem=null;
 
+/**
+ * A read-only list of where this module has been bought. Nothing here writes:
+ * entries are recorded when stock is received with a vendor named, and the only
+ * action is picking one for the current purchase plan.
+ */
 function openHistory(code){
-  histItem=code;histEditId=null;
+  histItem=code;
   const it=itemByCode(code);if(!it)return;
-  buildCombos();
   byId('histTitle').textContent='Buying Options — '+it['Module Name'];
-  const cur=cheapestOption(code);
-  byId('histSub').innerHTML=`${esc(code)} · current: <b>${esc(it.Supplier||'—')}</b> at ${money(it['Purchase Rate'],0)}`+
-    (cur&&!same(cur.supplier,it.Supplier)?` · cheapest rate on record: <b>${esc(cur.supplier)}</b> at ${money(cur.rate,0)}`:'')+
-    `<br><span style="font-size:11px;opacity:.85">Sorted by purchase rate. Total cost = rate + shipping % + GST % + handling %.</span>`;
-  byId('histForm').style.display='none';
-  byId('h_SaveBtn').style.display='none';
-  byId('h_DelBtn').style.display='none';
-  byId('h_AddBtn').style.display=role==='admin'?'':'none';
+  const cur=cheapestOption(code),pick=poVendor[code];
+  byId('histSub').innerHTML=`${esc(code)} · module rate: <b>${esc(it.Supplier||'—')}</b> at ${money(it['Purchase Rate'],0)}`+
+    (cur&&!same(cur.supplier,it.Supplier)?` · cheapest on record: <b>${esc(cur.supplier)}</b> at ${money(cur.rate,0)}`:'')+
+    (pick?`<br><span style="color:var(--accent-dark);font-weight:700">This order is set to ${esc(pick.supplier)} at ${money(pick.rate,0)}</span>`:'')+
+    `<br><span style="font-size:11px;opacity:.85">Sorted by purchase rate. Total cost = rate + shipping % + GST % + handling %. `+
+    `Picking one changes <b>this order only</b> — never the module's rate.</span>`;
   byId('h_Msg').textContent='';byId('h_Msg').className='modal-msg';
   renderHistory();
   openModalEl('histModal');
@@ -2732,119 +2710,10 @@ function renderHistory(){
         <span class="l">${money(total)} total cost</span></div>
       ${h.Comments?`<div class="hist-cmt">${esc(h.Comments)}</div>`:''}
       ${role==='admin'?`<div class="hist-acts">
-        <button class="act-btn" onclick="histShowForm('${esc(h['Entry ID'])}')">Edit</button>
-        <button class="act-btn primary" onclick="histUseInInventory('${esc(h['Entry ID'])}')">Use in Inventory →</button>
+        <button class="act-btn primary" onclick="poUseVendor('${esc(code)}','${esc(h['Entry ID'])}')">Use in purchase</button>
       </div>`:''}
     </div>`;
-  }).join(''):'<div class="hist-empty">No buying options logged yet.'+(role==='admin'?' Add one, or record a vendor when you receive stock.':'')+'</div>');
-}
-
-function histShowForm(id){
-  histEditId=id||null;
-  const it=itemByCode(histItem)||{};
-  const h=id?PHIST.find(x=>same(x['Entry ID'],id)):null;
-  byId('histFormTitle').textContent=h?'Edit buying option':'Add a buying option';
-  setComboValue('h_Sup',h?(h.Supplier||''):(it.Supplier||''));
-  byId('h_SKU').value=h?(h.SKU||''):(it.SKU||'');
-  byId('h_Rate').value=h?num(h['Purchase Rate']):num(it['Purchase Rate'])||'';
-  byId('h_Qty').value=h?(num(h.Qty)||''):'';
-  byId('h_Ship').value=h?(h['Shipping %']||''):(costOf(it).shipPc||'');
-  byId('h_GST').value=h?(h['GST %']||''):(costOf(it).gstPc||'');
-  byId('h_Handle').value=h?(h['Handling %']||''):(costOf(it).handlePc||'');
-  byId('h_Date').value=h?toDateInput(h.Date):today();
-  byId('h_Ref').value=h?(h.Ref||''):'';
-  byId('h_Cmt').value=h?(h.Comments||''):'';
-  byId('histForm').style.display='';
-  byId('h_SaveBtn').style.display='';byId('h_SaveBtn').disabled=false;
-  byId('h_DelBtn').style.display=h?'':'none';
-  byId('h_Msg').textContent='';byId('h_Msg').className='modal-msg';
-  histPreview();
-  byId('histForm').scrollIntoView({block:'nearest'});
-}
-
-function histPreview(){
-  const c=costOf({'Purchase Rate':byId('h_Rate').value,'Shipping %':byId('h_Ship').value,
-    'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
-  const it=itemByCode(histItem)||{};
-  const curRate=num(it['Purchase Rate']),curTotal=totalCostOf(it);
-  const dRate=c.base-curRate,dTotal=c.total-curTotal;
-  const cmp=(d,what)=>Math.abs(d)<0.005?`<b>same ${what}</b>`
-    :`<b style="color:${d<0?'var(--green)':'var(--red)'}">${d<0?money(-d)+' cheaper':money(d)+' dearer'}</b>`;
-  byId('h_Preview').innerHTML=
-    `Purchase rate <b>${money(c.base,0)}</b>`+
-    (curRate>0?` — vs current ${money(curRate,0)}, ${cmp(dRate,'rate')}`:'')+
-    `<br>Total cost <b>${money(c.total)}</b> &nbsp;<span style="opacity:.8">(+ ${c.shipPc||0}% ship, ${c.gstPc||0}% GST, ${c.handlePc||0}% handling)</span>`+
-    (curTotal>0?` — vs current ${money(curTotal)}, ${cmp(dTotal,'total')}`:'');
-}
-
-function histEntryFromForm(){
-  const rate=byId('h_Rate').value.trim();
-  const c=costOf({'Purchase Rate':rate,'Shipping %':byId('h_Ship').value,
-    'GST %':byId('h_GST').value,'Handling %':byId('h_Handle').value});
-  return {'Item Code':histItem,'Date':byId('h_Date').value||today(),
-    'Supplier':comboValue('h_Sup'),'SKU':byId('h_SKU').value.trim(),
-    'Purchase Rate':rate,'Shipping %':byId('h_Ship').value.trim(),
-    'GST %':byId('h_GST').value.trim(),'Handling %':byId('h_Handle').value.trim(),
-    'Total Cost':c.total.toFixed(2),'Qty':byId('h_Qty').value.trim(),
-    'Ref':byId('h_Ref').value.trim(),'Comments':byId('h_Cmt').value.trim(),
-    'By':(user&&user.email)||''};
-}
-
-async function savePurchaseEntry(){
-  const msg=byId('h_Msg'),btn=byId('h_SaveBtn');
-  const entry=histEntryFromForm();
-  if(!entry.Supplier){msg.textContent='Pick or type a vendor.';msg.className='modal-msg err';return}
-  if(byId('h_Rate').value.trim()===''){msg.textContent='Enter the purchase rate.';msg.className='modal-msg err';return}
-  btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
-  const r=histEditId
-    ? await post({action:'updatePurchase',id:histEditId,entry:entry})
-    : await post({action:'addPurchase',entry:entry});
-  if(!r.ok){showErr(msg,'Could not save:',r);btn.disabled=false;return}
-  if(histEditId){const i=PHIST.findIndex(x=>same(x['Entry ID'],histEditId));if(i>-1)PHIST[i]=Object.assign({},PHIST[i],entry)}
-  else PHIST.push(Object.assign({'Entry ID':r.entryId||('PH-local-'+PHIST.length)},entry));
-  msg.textContent='Saved ✓';msg.className='modal-msg ok';
-  byId('histForm').style.display='none';byId('h_SaveBtn').style.display='none';byId('h_DelBtn').style.display='none';
-  histEditId=null;renderHistory();refreshAll();
-}
-
-/**
- * Buying options are a RECORD of what we paid, not a control on what the module
- * costs. Editing one never touches the Inventory row — the rate, the total cost,
- * the EB price and every kit built on them change in one place only: the item
- * form. This button carries the figures over and opens that form, so the change
- * still happens there, deliberately, behind a Save.
- */
-function histUseInInventory(id){
-  const h=PHIST.find(x=>same(x['Entry ID'],id));if(!h)return;
-  const code=h['Item Code'];
-  if(!itemByCode(code)){alert('That module is no longer in the inventory.');return}
-  closeModal('histModal');
-  openItemForm(code);
-  setComboValue('i_Sup',h.Supplier||'');
-  if(h.SKU)byId('i_SKU').value=h.SKU;
-  byId('i_Rate').value=num(h['Purchase Rate'])||'';
-  byId('i_Round').value='';
-  ['Shipping %','GST %','Handling %'].forEach((k,n)=>{
-    if(!blank(h[k]))byId(['i_Ship','i_GST','i_Handle'][n]).value=h[k];
-  });
-  recalcCost();
-  const m=byId('i_Msg');
-  m.innerHTML='Filled in from <b>'+esc(h.Supplier||'that buying option')+'</b> at '+money(h['Purchase Rate'],0)+
-    '. <b>Nothing has changed yet</b> — press Save to make this the module\'s rate.';
-  m.className='modal-msg';
-}
-
-async function deletePurchaseEntry(){
-  if(!histEditId)return;
-  if(!confirm('Delete this buying option from the history?'))return;
-  const done=delStart('h_Msg','h_DelBtn');
-  const r=await post({action:'deletePurchase',id:histEditId});
-  done();
-  if(!r.ok){showErr('h_Msg','Could not delete:',r);return}
-  PHIST=PHIST.filter(x=>!same(x['Entry ID'],histEditId));
-  histEditId=null;byId('histForm').style.display='none';
-  byId('h_SaveBtn').style.display='none';byId('h_DelBtn').style.display='none';
-  renderHistory();refreshAll();
+  }).join(''):'<div class="hist-empty">No buying options logged yet.'+(role==='admin'?' They are recorded when you receive stock with a vendor named.':'')+'</div>');
 }
 
 /** Compact "who else sells this" line, used in the inventory and purchase tables. */
@@ -3302,9 +3171,31 @@ async function deleteOrder(){
 let poMode='both';   // 'kit' | 'centre' | 'both'
 let poQty={};        // item code → hand-edited order qty
 let poSkip={};       // item code → excluded from this order
+// item code → {supplier, sku, rate, entryId} chosen from the buying options.
+// Planning only: it moves the line to that vendor's group for THIS order and is
+// forgotten on reload. It never touches the module's inventory record.
+let poVendor={};
 
 function setPoMode(m){poMode=m;renderPurchase();}
-function poResetQty(){poQty={};poSkip={};renderPurchase();}
+function poResetQty(){poQty={};poSkip={};poVendor={};renderPurchase();}
+/**
+ * Choose which vendor this order should use for a module. Purchase planning only:
+ * it moves the line into that vendor's group with their rate and SKU, and is
+ * forgotten on reload. The dialog stays open and says what changed, rather than
+ * throwing you to another tab — Options is reachable from Inventory too.
+ */
+function poUseVendor(code,entryId){
+  const h=PHIST.find(x=>same(x['Entry ID'],entryId));if(!h)return;
+  poVendor[code]={supplier:h.Supplier||'Unknown supplier',sku:h.SKU||'',
+                  rate:num(h['Purchase Rate']),total:entryTotalCost(h),entryId:entryId};
+  renderPurchase();
+  if(same(histItem,code))openHistory(code);      // refresh the "set to…" line
+  const m=byId('h_Msg');
+  m.innerHTML='This order will use <b>'+esc(h.Supplier||'that vendor')+'</b> at '+money(h['Purchase Rate'],0)+
+    (h.SKU?' · SKU '+esc(h.SKU):'')+'. The module\'s own rate is unchanged.';
+  m.className='modal-msg ok';
+}
+function poClearVendor(code){delete poVendor[code];renderPurchase();}
 function poSetQty(code,v){poQty[code]=Math.max(0,Math.round(num(v)));renderPurchase();}
 function poToggle(code){poSkip[code]=!poSkip[code];renderPurchase();}
 
@@ -3340,14 +3231,18 @@ function purchaseList(mode){
     const suggested=Math.max(needed-stock,0);
     const qty=poQty[code]!==undefined?poQty[code]:suggested;
     if(suggested<=0&&poQty[code]===undefined)return;   // covered by stock
-    const rate=num(it&&it['Purchase Rate']);
+    // A vendor picked from the buying options wins for this order only.
+    const pick=poVendor[code];
+    const rate=pick?pick.rate:num(it&&it['Purchase Rate']);
+    const unitLanded=pick?pick.total:totalCostOf(it);
     rows.push({code:code,item:it,
       name:it?it['Module Name']:'(not in inventory)',
-      sku:it?(it.SKU||''):'',unit:it?(it.Unit||''):'',
-      supplier:(it&&it.Supplier)||'Unknown supplier',
+      sku:pick?pick.sku:(it?(it.SKU||''):''),unit:it?(it.Unit||''):'',
+      supplier:pick?pick.supplier:((it&&it.Supplier)||'Unknown supplier'),
+      picked:!!pick,
       forKits:forKits,forCentres:forCentres,needed:needed,
       stock:stock,central:stock,elsewhere:totalQty(code)-stock,suggested:suggested,qty:qty,
-      rate:rate,value:qty*rate,landed:qty*totalCostOf(it),skip:!!poSkip[code]});
+      rate:rate,value:qty*rate,landed:qty*unitLanded,skip:!!poSkip[code]});
   });
   rows.sort((a,b)=>b.value-a.value||b.suggested-a.suggested);
   const groups={};
@@ -3426,7 +3321,8 @@ function renderPurchase(){
               ${r.forCentres>0&&poMode!=='kit'?'<span class="po-src centre">centre stock</span>':''}
             </div>
             ${optionsNote(r.code,2)?`<div class="vendor-note">${optionsNote(r.code,2)}</div>`:''}</td>
-          <td class="mono">${esc(r.sku)||'<span style="color:var(--text-light)">—</span>'}</td>
+          <td class="mono">${esc(r.sku)||'<span style="color:var(--text-light)">—</span>'}
+            ${r.picked?'<div class="qty-min">chosen vendor</div>':''}</td>
           <td class="num${poMode==='centre'?' cost-dim':''}">${poMode==='centre'?'—':(r.forKits||'—')}</td>
           <td class="num${poMode==='kit'?' cost-dim':''}">${poMode==='kit'?'—':(r.forCentres||'—')}</td>
           <td class="num"><b>${r.needed}</b></td>
@@ -3436,7 +3332,7 @@ function renderPurchase(){
             ${r.qty!==r.suggested?`<div class="qty-min">was ${r.suggested}</div>`:''}</td>
           <td class="num">${r.rate?money(r.rate,0):'<span style="color:var(--red)">no rate</span>'}</td>
           <td class="num"><b>${money0(r.value)}</b>
-            ${role==='admin'?`<div style="margin-top:4px"><button class="act-btn" onclick="openHistory('${esc(r.code)}')">Options</button></div>`:''}
+            ${role==='admin'?`<div style="margin-top:4px" class="row-acts"><button class="act-btn" onclick="openHistory('${esc(r.code)}')">Options</button>${r.picked?`<button class="act-btn" title="Back to the module's own vendor" onclick="poClearVendor('${esc(r.code)}')">Reset</button>`:''}</div>`:''}
           </td></tr>`).join('')}
         </tbody></table></div>
     </div>`;
