@@ -1038,9 +1038,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 
           <div class="set-group">Stock</div>
           <div class="form-grid" style="gap:0 14px;">
-            <div class="form-row"><label>Default Min Qty</label>
+            <div class="form-row"><label>Default Min Qty — central store</label>
+              <input type="number" step="1" min="0" id="set_MinQtyHQ">
+              <small>The buffer the store keeps. 0 means it is only flagged when something runs out.</small></div>
+            <div class="form-row"><label>Default Min Qty — each centre</label>
               <input type="number" step="1" min="0" id="set_MinQty">
-              <small>Used at a location when neither it nor the module sets its own.</small></div>
+              <small>Applies to every teaching centre.</small></div>
+            <div class="form-row full"><div class="hint" style="margin:0 0 14px;">Both are only a fallback: a module's own <b>Default Min Qty</b> beats them, and a Min Qty set on a specific location beats that.</div></div>
             <div class="form-row"><label>Default GST %</label>
               <input type="number" step="0.01" min="0" id="set_GST">
               <small>Suggested on a new module. Existing modules keep theirs.</small></div>
@@ -1099,14 +1103,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
           <div class="form-grid" style="gap:0 14px;">
             <div class="form-row"><label>Opening stock at</label><select id="i_OpenLoc"></select></div>
             <div class="form-row"><label>Opening quantity</label><input type="number" step="1" id="i_OpenQty" placeholder="0"></div>
-            <div class="form-row"><label>Default Min Qty <small style="text-transform:none;letter-spacing:0;">— starting Min Qty for each centre</small></label><input type="number" step="1" id="i_Min" placeholder="e.g. 10"></div>
+            <div class="form-row"><label>Min Qty — each centre <small style="text-transform:none;letter-spacing:0;">— blank uses the Settings default</small></label><input type="number" step="1" id="i_Min" placeholder="e.g. 10"></div>
+            <div class="form-row"><label>Min Qty — central store <small style="text-transform:none;letter-spacing:0;">— the buffer to keep</small></label><input type="number" step="1" id="i_MinHQ" placeholder="e.g. 40"></div>
             <div class="form-row"><label>Date</label><input type="date" id="i_Date"></div>
           </div>
         </div>
         <div id="i_EditStock" style="grid-column:1/-1;display:none;">
           <div class="bal-grid" id="i_Balances"></div>
           <div class="form-grid" style="gap:0 14px;">
-            <div class="form-row"><label>Default Min Qty</label><input type="number" step="1" id="i_Min2" placeholder="e.g. 10"><small>Used for a centre that has no Min Qty of its own</small></div>
+            <div class="form-row"><label>Min Qty — each centre</label><input type="number" step="1" id="i_Min2" placeholder="e.g. 10"><small>Used at a centre with no Min Qty of its own</small></div>
+            <div class="form-row"><label>Min Qty — central store</label><input type="number" step="1" id="i_Min2HQ" placeholder="e.g. 40"><small>The buffer to keep at the store</small></div>
             <div class="form-row"><label>Date</label><input type="date" id="i_Date2"></div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
@@ -1388,7 +1394,10 @@ const CURRENCY = '₹';
 // Starting values only — Admin → Settings overrides these from the sheet, so a
 // change does not need a new copy of this file. They still apply on first run
 // and whenever a setting has never been saved.
-let LOW_STOCK_DEFAULT = 5;    // Min Qty used when neither the centre nor the item sets one
+// A teaching centre holds what it teaches with; the central store holds the buffer
+// everything is built and shipped from, so the two want different starting points.
+let CENTRE_MIN_DEFAULT  = 5;  // fallback Min Qty at a teaching centre
+let CENTRAL_MIN_DEFAULT = 0;  // fallback Min Qty at the central store
 let MARGIN_PCT  = 40;         // ElectroBotics Cost = total cost + this % ON COST
 let PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 5 = nearest ₹5)
 let GST_DEFAULT = 18;         // suggested GST % on a new module
@@ -1409,7 +1418,10 @@ let SETTINGS={};
 const SETTING_DEFS=[
   {key:'Margin %',        id:'set_Margin', dflt:40, get:()=>MARGIN_PCT,        set:v=>MARGIN_PCT=v},
   {key:'Price Rounding',  id:'set_Round',  dflt:1,  get:()=>PRICE_ROUND,       set:v=>PRICE_ROUND=v},
-  {key:'Default Min Qty', id:'set_MinQty', dflt:5,  get:()=>LOW_STOCK_DEFAULT, set:v=>LOW_STOCK_DEFAULT=v},
+  // 'Default Min Qty' keeps its old key so a value already saved carries over as
+  // the centres figure — which is what it meant when there was only one.
+  {key:'Default Min Qty',        id:'set_MinQty',    dflt:5, get:()=>CENTRE_MIN_DEFAULT,  set:v=>CENTRE_MIN_DEFAULT=v},
+  {key:'Central Store Min Qty',  id:'set_MinQtyHQ',  dflt:0, get:()=>CENTRAL_MIN_DEFAULT, set:v=>CENTRAL_MIN_DEFAULT=v},
   {key:'Default GST %',   id:'set_GST',    dflt:18, get:()=>GST_DEFAULT,       set:v=>GST_DEFAULT=v},
   {key:'Business Name',   id:'set_Biz',    dflt:'ElectroBotics', text:true,
      get:()=>BIZ_NAME, set:v=>BIZ_NAME=v}
@@ -1425,7 +1437,8 @@ function applySettings(rows){
     d.set(d.text?String(raw).trim():num(raw));
   });
   if(!(PRICE_ROUND>=1))PRICE_ROUND=1;       // a zero or blank rounding would divide by zero
-  if(!(LOW_STOCK_DEFAULT>=0))LOW_STOCK_DEFAULT=0;
+  if(!(CENTRE_MIN_DEFAULT>=0))CENTRE_MIN_DEFAULT=0;
+  if(!(CENTRAL_MIN_DEFAULT>=0))CENTRAL_MIN_DEFAULT=0;
 }
 let user=null,role='',demoMode=false,currentScreen='',currentKit=null,currentCentre=null;
 let _readyResolve;const dataReady=new Promise(r=>{_readyResolve=r;});
@@ -1560,12 +1573,31 @@ function csRow(itemCode,centreCode){
   return CSTOCK.find(r=>same(r['Item Code'],itemCode)&&same(r['Centre Code'],centreCode))||null;
 }
 function qtyAt(itemCode,centreCode){const r=csRow(itemCode,centreCode);return r?num(r.Qty):0}
+/**
+ * Most specific wins, and every rung knows which KIND of location it is for:
+ *   1 this location's own Min Qty
+ *   2 the module's own figure for that kind (Central Min Qty / Default Min Qty)
+ *   3 the Settings default for that kind
+ * The central store keeps a buffer to build and ship from; a centre keeps what it
+ * teaches with. One number could never be right for both.
+ */
 function minAt(itemCode,centreCode){
   const r=csRow(itemCode,centreCode);
   if(r&&!blank(r['Min Qty']))return num(r['Min Qty']);
-  const it=itemByCode(itemCode);
-  if(it&&!blank(it['Default Min Qty']))return num(it['Default Min Qty']);
-  return LOW_STOCK_DEFAULT;
+  return moduleMin(itemByCode(itemCode),centreCode);
+}
+
+/** Rungs 2 and 3 — the module's own default for this kind of location, else Settings. */
+function moduleMin(it,centreCode){
+  const central=same(centreCode,centralCode());
+  const own=it?(central?it['Central Min Qty']:it['Default Min Qty']):'';
+  if(!blank(own))return num(own);
+  return minDefaultFor(centreCode);
+}
+
+/** The Settings fallback that applies at this kind of location. */
+function minDefaultFor(centreCode){
+  return same(centreCode,centralCode())?CENTRAL_MIN_DEFAULT:CENTRE_MIN_DEFAULT;
 }
 function totalQty(itemCode){return CSTOCK.filter(r=>same(r['Item Code'],itemCode)).reduce((s,r)=>s+num(r.Qty),0)}
 function centralQty(itemCode){return qtyAt(itemCode,centralCode())}
@@ -2418,10 +2450,10 @@ function settingsPreview(){
 async function saveSettings(){
   const msg=byId('set_Msg'),btn=byId('set_SaveBtn');
   const margin=num(byId('set_Margin').value);
-  const minq=num(byId('set_MinQty').value),gst=num(byId('set_GST').value);
+  const minq=num(byId('set_MinQty').value),minhq=num(byId('set_MinQtyHQ').value),gst=num(byId('set_GST').value);
   const biz=byId('set_Biz').value.trim();
   if(margin<0){showErrPlain(msg,'Margin cannot be negative.');return}
-  if(minq<0){showErrPlain(msg,'Default Min Qty cannot be negative.');return}
+  if(minq<0||minhq<0){showErrPlain(msg,'Default Min Qty cannot be negative.');return}
   if(gst<0){showErrPlain(msg,'Default GST cannot be negative.');return}
   if(!biz){showErrPlain(msg,'Business name cannot be empty — it signs every WhatsApp message.');return}
   const payload={};
@@ -2717,6 +2749,7 @@ function openItemForm(code){
   byId('i_EditStock').style.display=it?'':'none';
   if(it){
     byId('i_Min2').value=it['Default Min Qty']||'';
+    byId('i_Min2HQ').value=it['Central Min Qty']||'';
     byId('i_Date2').value=toDateInput(it.Date);
     byId('i_Balances').innerHTML=allLocations().map(c=>{
       const cc=c['Centre Code'],q=qtyAt(code,cc),central=isCentral(c);
@@ -2727,7 +2760,8 @@ function openItemForm(code){
     }).join('');
   }else{
     byId('i_Code').value=nextItemCode();byId('i_Date').value=today();byId('i_GST').value=String(GST_DEFAULT);
-    byId('i_OpenQty').value='0';byId('i_Min').value=String(LOW_STOCK_DEFAULT);byId('i_Unit').value='pcs';
+    byId('i_OpenQty').value='0';byId('i_Min').value=String(CENTRE_MIN_DEFAULT);
+    byId('i_MinHQ').value=String(CENTRAL_MIN_DEFAULT);byId('i_Unit').value='pcs';
     setSelCode('i_OpenLoc',centralCode());
   }
   byId('i_MarginLbl').textContent=MARGIN_PCT;
@@ -2792,6 +2826,7 @@ async function saveItem(){
   const rec={};Object.keys(ITEM_FIELDS).forEach(f=>{rec[ITEM_FIELDS[f]]=byId(f).value.trim()});
   rec.Category=comboValue('i_Cat');rec.Supplier=comboValue('i_Sup');
   rec['Default Min Qty']=editingItem?byId('i_Min2').value.trim():byId('i_Min').value.trim();
+  rec['Central Min Qty']=editingItem?byId('i_Min2HQ').value.trim():byId('i_MinHQ').value.trim();
   rec.Date=editingItem?byId('i_Date2').value:byId('i_Date').value;
   const manual=byId('i_Manual').checked;
   rec['Price Mode']=manual?'Manual':'Auto';
@@ -3244,13 +3279,14 @@ function openMins(code){
   if(role!=='admin')return;
   minItem=code;
   const it=itemByCode(code);if(!it)return;
-  byId('minSub').textContent=code+' · '+it['Module Name']+' · default '+(it['Default Min Qty']||LOW_STOCK_DEFAULT);
+  byId('minSub').textContent=code+' · '+it['Module Name']+
+    ' · falls back to '+moduleMin(it,centralCode())+' central, '+moduleMin(it,'anyCentre')+' per centre';
   byId('minRows').innerHTML=stockCentres().map(c=>{
     const cc=c['Centre Code'],r=csRow(code,cc);
     return `<div class="min-row" data-centre="${esc(cc)}">
       <span class="cn">${esc(c['Centre Name'])}${isCentral(c)?'<span class="central-tag">CENTRAL</span>':''}</span>
       <span class="cq">${qtyAt(code,cc)} in stock</span>
-      <input type="number" step="1" min="0" class="min-inp" value="${r&&!blank(r['Min Qty'])?num(r['Min Qty']):''}" placeholder="${it['Default Min Qty']||LOW_STOCK_DEFAULT}">
+      <input type="number" step="1" min="0" class="min-inp" value="${r&&!blank(r['Min Qty'])?num(r['Min Qty']):''}" placeholder="${moduleMin(it,cc)}">
     </div>`;
   }).join('')||'<div class="tbl-empty">No locations yet.</div>';
   byId('minAll').value='';
