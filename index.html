@@ -121,6 +121,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .sub-tab.active{background:var(--surface);color:var(--accent-dark);box-shadow:0 1px 4px rgba(0,143,160,.12)}
 .sub-panel{display:none}
 .sub-panel.active{display:block}
+.set-group{font-family:var(--font-mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  color:var(--accent-dark);border-bottom:1px solid var(--border);padding-bottom:7px;margin:6px 0 14px}
 
 /* ─── Tables ─── */
 .table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:28px}
@@ -876,6 +878,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
       <button class="dash-tab active" data-group="admin" data-tab="summary" onclick="setPanel('admin','summary')">Dashboard</button>
       <button class="dash-tab" data-group="admin" data-tab="inventory" onclick="setPanel('admin','inventory')">Inventory</button>
       <button class="dash-tab" data-group="admin" data-tab="purchase" onclick="setPanel('admin','purchase')">Purchase</button>
+      <button class="dash-tab" data-group="admin" data-tab="settings" onclick="setPanel('admin','settings')">Settings</button>
     </div>
 
     <!-- Dashboard -->
@@ -1010,6 +1013,51 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
         <button class="btn-download" onclick="exportPurchaseAll()">↓ All vendors (one sheet each)</button>
       </div>
       <div id="poVendors"></div>
+    </div>
+
+    <!-- Settings -->
+    <div class="dash-panel" data-panel-group="admin" data-panel="settings" id="panel-settings">
+      <div class="table-card" style="max-width:720px;">
+        <div class="table-header"><div class="table-title">Settings</div></div>
+        <div style="padding:20px 22px;">
+          <div class="hint" style="margin:0 0 18px;">These live on the <b>Settings</b> tab of the sheet, so a change applies to everyone the next time they load the app — no new copy of <code>index.html</code> needed.</div>
+
+          <div class="set-group">Pricing</div>
+          <div class="form-grid" style="gap:0 14px;">
+            <div class="form-row"><label>Margin % on cost</label>
+              <input type="number" step="0.5" min="0" id="set_Margin" oninput="settingsPreview()">
+              <small>ElectroBotics price = total cost + this %. 40 turns ₹100 of cost into ₹140.</small></div>
+            <div class="form-row"><label>Price rounding</label>
+              <select id="set_Round" onchange="settingsPreview()">
+                <option value="1">Nearest ₹1</option>
+                <option value="5">Up to nearest ₹5</option>
+                <option value="10">Up to nearest ₹10</option>
+              </select><small>Applied after the margin.</small></div>
+          </div>
+          <div class="move-preview" id="set_Preview" style="margin-bottom:20px;"></div>
+
+          <div class="set-group">Stock</div>
+          <div class="form-grid" style="gap:0 14px;">
+            <div class="form-row"><label>Default Min Qty</label>
+              <input type="number" step="1" min="0" id="set_MinQty">
+              <small>Used at a location when neither it nor the module sets its own.</small></div>
+            <div class="form-row"><label>Default GST %</label>
+              <input type="number" step="0.01" min="0" id="set_GST">
+              <small>Suggested on a new module. Existing modules keep theirs.</small></div>
+          </div>
+
+          <div class="set-group">Messages</div>
+          <div class="form-row"><label>Business name</label>
+            <input type="text" id="set_Biz" maxlength="60">
+            <small>Heading and sign-off on WhatsApp bills, orders and stock lists.</small></div>
+
+          <div class="modal-msg" id="set_Msg" style="padding:14px 0 8px;"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-save" id="set_SaveBtn" onclick="saveSettings()">Save settings</button>
+            <button class="btn-cancel" onclick="renderSettings()">Reset</button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1336,19 +1384,49 @@ const GOOGLE_CLIENT_ID  = '1060454695062-vf1ajfodb8siesq7fk906rpind6fjc72.apps.g
 // Access is driven by the "Users" tab of the sheet (Email + Role columns):
 //   Role 'admin' → everything.   Role 'tutor' → Kits + Centres + Sell + Bills.
 const CURRENCY = '₹';
-const LOW_STOCK_DEFAULT = 5;    // Min Qty used when neither the centre nor the item sets one
-const MARGIN_PCT  = 40;         // ElectroBotics Cost = total cost + this % ON COST
-const PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 5 = nearest ₹5)
+
+// Starting values only — Admin → Settings overrides these from the sheet, so a
+// change does not need a new copy of this file. They still apply on first run
+// and whenever a setting has never been saved.
+let LOW_STOCK_DEFAULT = 5;    // Min Qty used when neither the centre nor the item sets one
+let MARGIN_PCT  = 40;         // ElectroBotics Cost = total cost + this % ON COST
+let PRICE_ROUND = 1;          // round the result to this (1 = nearest rupee, 5 = nearest ₹5)
+let GST_DEFAULT = 18;         // suggested GST % on a new module
+let BIZ_NAME    = 'ElectroBotics';   // sign-off on WhatsApp messages
 // ══════════════════════════════════════════════════
 
 // Lowest Code.gs version this build needs. Bump both together.
-const REQUIRED_BACKEND = 6;
+const REQUIRED_BACKEND = 7;
 
 const SHEETS = {inv:'Inventory',kits:'Kits',bom:'KitComponents',centres:'Centres',cstock:'CentreStock',
                 moves:'StockMoves',orders:'Orders',sales:'Sales',items:'SaleItems',
                 phist:'PurchaseHistory',users:'Users'};
 
 let INV=[],KITS=[],BOM=[],CENTRES=[],CSTOCK=[],MOVES=[],ORDERS=[],SALES=[],SALEITEMS=[],PHIST=[],USERS=[];
+let SETTINGS={};
+
+/** Every tunable in one place: sheet key, the live variable, and how to read it. */
+const SETTING_DEFS=[
+  {key:'Margin %',        id:'set_Margin', dflt:40, get:()=>MARGIN_PCT,        set:v=>MARGIN_PCT=v},
+  {key:'Price Rounding',  id:'set_Round',  dflt:1,  get:()=>PRICE_ROUND,       set:v=>PRICE_ROUND=v},
+  {key:'Default Min Qty', id:'set_MinQty', dflt:5,  get:()=>LOW_STOCK_DEFAULT, set:v=>LOW_STOCK_DEFAULT=v},
+  {key:'Default GST %',   id:'set_GST',    dflt:18, get:()=>GST_DEFAULT,       set:v=>GST_DEFAULT=v},
+  {key:'Business Name',   id:'set_Biz',    dflt:'ElectroBotics', text:true,
+     get:()=>BIZ_NAME, set:v=>BIZ_NAME=v}
+];
+
+/** Apply the Settings tab over the built-in defaults. A key we don't know is ignored. */
+function applySettings(rows){
+  SETTINGS={};
+  (rows||[]).forEach(r=>{const k=String(r.Key||'').trim();if(k)SETTINGS[k]=r.Value});
+  SETTING_DEFS.forEach(d=>{
+    const raw=SETTINGS[d.key];
+    if(blank(raw))return;
+    d.set(d.text?String(raw).trim():num(raw));
+  });
+  if(!(PRICE_ROUND>=1))PRICE_ROUND=1;       // a zero or blank rounding would divide by zero
+  if(!(LOW_STOCK_DEFAULT>=0))LOW_STOCK_DEFAULT=0;
+}
 let user=null,role='',demoMode=false,currentScreen='',currentKit=null,currentCentre=null;
 let _readyResolve;const dataReady=new Promise(r=>{_readyResolve=r;});
 
@@ -1364,7 +1442,13 @@ function toDateInput(raw){if(!raw)return '';const s=String(raw);if(/^\d{4}-\d{2}
 function uniq(arr){return [...new Set(arr.filter(x=>x!==''&&x!==undefined&&x!==null))].sort((a,b)=>String(a).localeCompare(String(b)))}
 function byId(id){return document.getElementById(id)}
 function closeModal(id){byId(id).classList.remove('open')}
-function openModalEl(id){byId(id).classList.add('open')}
+/** Always open a dialog at its top — a retained scroll position from the last
+ *  time it was open put "Add Item" halfway down the form. */
+function openModalEl(id){
+  const n=byId(id);n.classList.add('open');
+  n.scrollTop=0;
+  const body=n.querySelector('.modal-body');if(body)body.scrollTop=0;
+}
 function same(a,b){return String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase()}
 
 /**
@@ -1575,6 +1659,7 @@ function applyPayload(d){
   CENTRES=d.centres||[];CSTOCK=d.centreStock||[];MOVES=d.stockMoves||[];
   ORDERS=d.orders||[];SALES=d.sales||[];SALEITEMS=d.saleItems||[];
   PHIST=d.purchaseHistory||[];USERS=d.users||[];
+  applySettings(d.settings);
 }
 
 async function loadData(){
@@ -2307,10 +2392,56 @@ function setPanel(group,name){
   if(group==='admin'&&name==='summary'){setTimeout(buildCharts,30);setTimeout(resizeCharts,260);}
 }
 function setTab(tab){setPanel('admin',tab)}   // kept: older call sites
+// ─── Settings ───────────────────────────────────────────────────
+function renderSettings(){
+  SETTING_DEFS.forEach(d=>{const el=byId(d.id);if(el)el.value=d.get()});
+  const m=byId('set_Msg');if(m){m.textContent='';m.className='modal-msg'}
+  settingsPreview();
+}
+
+/** Show what the pricing settings would do to a real figure, before saving. */
+function settingsPreview(){
+  const box=byId('set_Preview');if(!box)return;
+  const mg=num(byId('set_Margin').value),r=Math.max(1,num(byId('set_Round').value)||1);
+  const price=c=>{const p=c*(1+mg/100);return r<=1?Math.round(p):Math.ceil(p/r)*r};
+  let line='A module costing '+money(100,0)+' would be priced <b>'+money(price(100),0)+'</b>.';
+  const sample=INV.find(i=>totalCostOf(i)>0);
+  if(sample){
+    const c=totalCostOf(sample);
+    line+='<br>'+esc(sample['Module Name'])+' costs '+money(c)+' → <b>'+money(price(c),0)+'</b>'+
+          ' (today '+money(ebCostOf(sample),0)+').';
+  }
+  line+='<br><span style="opacity:.8">Modules priced manually are not affected.</span>';
+  box.innerHTML=line;
+}
+
+async function saveSettings(){
+  const msg=byId('set_Msg'),btn=byId('set_SaveBtn');
+  const margin=num(byId('set_Margin').value);
+  const minq=num(byId('set_MinQty').value),gst=num(byId('set_GST').value);
+  const biz=byId('set_Biz').value.trim();
+  if(margin<0){showErrPlain(msg,'Margin cannot be negative.');return}
+  if(minq<0){showErrPlain(msg,'Default Min Qty cannot be negative.');return}
+  if(gst<0){showErrPlain(msg,'Default GST cannot be negative.');return}
+  if(!biz){showErrPlain(msg,'Business name cannot be empty — it signs every WhatsApp message.');return}
+  const payload={};
+  SETTING_DEFS.forEach(d=>{const el=byId(d.id);if(el)payload[d.key]=el.value});
+  btn.disabled=true;msg.innerHTML='<span class="spinner"></span>Saving…';msg.className='modal-msg saving';
+  const r=await post({action:'saveSettings',settings:payload});
+  btn.disabled=false;
+  if(!r.ok){showErr(msg,'Could not save:',r);return}
+  // apply at once — prices, low-stock and every WhatsApp message read these
+  applySettings(Object.keys(payload).map(k=>({Key:k,Value:payload[k]})));
+  refreshAll();
+  renderSettings();                        // clears the message, so set it after
+  msg.textContent='Settings saved ✓ — prices and stock levels updated across the app.';
+  msg.className='modal-msg ok';
+}
+
 function renderAdmin(){
   buildCombos();renderStats();renderLow();renderRequirement();
   renderInventory();renderMoves();      // Stock Log now lives inside the Inventory tab
-  renderPurchase();
+  renderPurchase();renderSettings();
   setTimeout(buildCharts,30);
 }
 
@@ -2524,24 +2655,24 @@ function renderInventory(){
   byId('invTable').innerHTML=`<thead><tr>
       <th>Item Code</th><th>Module</th><th>Supplier</th>
       ${locs.map(c=>`<th class="num" title="${esc(c['Centre Code'])}">${esc(c['Centre Name'])}</th>`).join('')}
-      <th class="num">Total</th><th class="num">Min Qty</th><th>Status</th><th class="price-cell">EB Cost</th><th></th>
+      <th class="num">Total</th><th>Status</th><th class="price-cell">EB Cost</th><th></th>
     </tr></thead><tbody>`+
     (invRows.length?invRows.map(i=>{
-      const ic=i['Item Code'],tq=totalQty(ic),cm=companyMin(ic);
+      const ic=i['Item Code'],tq=totalQty(ic);
       return `<tr>
         <td class="mono">${esc(ic)}</td>
         <td><div style="font-weight:600">${esc(i['Module Name'])}</div><div class="mono" style="font-size:10px;color:var(--text-light)">${esc(i.Category||'')} · ${esc(i.Unit||'')}</div></td>
         <td>${esc(i.Supplier||'')}</td>
         ${locs.map(c=>{
           const cc=c['Centre Code'],cq=qtyAt(ic,cc);
-          if(isCentral(c))return `<td class="qty-cell ${cq===0?'zero':''}"><b>${cq}</b></td>`;
+          if(isCentral(c))return `<td class="qty-cell ${qtyCellClass(ic,cc)}"><b>${cq}</b><span class="qty-min">min ${minAt(ic,cc)}</span></td>`;
           return `<td class="qty-cell ${qtyCellClass(ic,cc)}">${cq}<span class="qty-min">min ${minAt(ic,cc)}</span></td>`;
         }).join('')}
-        <td class="num"><b>${tq}</b></td><td class="num" style="color:var(--text-light)">${cm}</td>
+        <td class="num"><b>${tq}</b></td>
         <td>${badge(companyState(ic))}</td>
         <td class="price-cell"><span class="p">${money(ebCostOf(i),0)}</span><span class="pm">${same(i['Price Mode'],'Manual')?'manual':'+'+MARGIN_PCT+'%'}</span></td>
         <td><div class="row-acts inv-acts">${invRowActions(ic)}</div></td></tr>`;
-    }).join(''):`<tr><td colspan="${locs.length+8}" class="tbl-empty">No items match these filters.</td></tr>`)+'</tbody>';
+    }).join(''):`<tr><td colspan="${locs.length+7}" class="tbl-empty">No items match these filters.</td></tr>`)+'</tbody>';
 }
 
 // ─── Item form ──────────────────────────────────────────────────
@@ -2595,7 +2726,7 @@ function openItemForm(code){
         <div class="m">${central?'store':'min '+minAt(code,cc)}</div></div>`;
     }).join('');
   }else{
-    byId('i_Code').value=nextItemCode();byId('i_Date').value=today();byId('i_GST').value='18';
+    byId('i_Code').value=nextItemCode();byId('i_Date').value=today();byId('i_GST').value=String(GST_DEFAULT);
     byId('i_OpenQty').value='0';byId('i_Min').value=String(LOW_STOCK_DEFAULT);byId('i_Unit').value='pcs';
     setSelCode('i_OpenLoc',centralCode());
   }
@@ -2612,9 +2743,17 @@ function openItemForm(code){
   recalcCost();
   openModalEl('itemModal');
 }
+/**
+ * Min Qty and Buying options open ON TOP of the item form and hand you back to
+ * it when they close — neither changes what that form is showing. Update Stock
+ * replaces it, because receiving or moving stock changes the balances the form
+ * displays, and returning to a stale form would be worse than leaving it.
+ */
 function fromItemModal(what){
-  const code=editingItem;closeModal('itemModal');
-  if(what==='move')openMove(code);else if(what==='hist')openHistory(code);else openMins(code);
+  const code=editingItem;
+  if(what==='move'){closeModal('itemModal');openMove(code);return}
+  if(what==='hist'){openHistory(code);return}
+  openMins(code);
 }
 function recalcCost(){
   const draft={'Purchase Rate':byId('i_Rate').value,'Round Off Rate':byId('i_Round').value,
@@ -3557,7 +3696,7 @@ function poVendorRows(v){
 function waVendorOrder(v){
   const rows=poVendorRows(v);
   if(!rows.length){alert('Nothing to order from '+v+'.');return}
-  const L=['*ElectroBotics — Purchase order*','','Vendor: '+v,'Date: '+fmtDate(today()),''];
+  const L=['*'+BIZ_NAME+' — Purchase order*','','Vendor: '+v,'Date: '+fmtDate(today()),''];
   rows.forEach((r,i)=>{
     L.push(`${i+1}. ${r.name}`);
     L.push(`   ${r.sku?'SKU '+r.sku+' · ':''}Qty ${r.qty}${r.unit?' '+r.unit:''}`);
@@ -3565,7 +3704,7 @@ function waVendorOrder(v){
   L.push('');
   L.push('Please confirm availability, price and delivery time.');
   L.push('');
-  L.push('*ElectroBotics*');
+  L.push('*'+BIZ_NAME+'*');
   openWa(v,L.join('\n'));
 }
 
@@ -3718,7 +3857,7 @@ function nextBillNo(){
 
 function billText(sale,items){
   const L=[];
-  L.push('*ElectroBotics — Bill*');
+  L.push('*'+BIZ_NAME+' — Bill*');
   L.push('');
   L.push('Bill No: '+sale['Bill No']);
   L.push('Date: '+fmtDate(sale.Date));
@@ -3735,7 +3874,7 @@ function billText(sale,items){
   if(sale.Notes)L.push('Note: '+sale.Notes);
   L.push('');
   L.push('Thank you,');
-  L.push('*ElectroBotics*');
+  L.push('*'+BIZ_NAME+'*');
   return L.join('\n');
 }
 
@@ -3898,7 +4037,7 @@ function waLowStock(){
   if(lowView==='company'){
     const rows=a.company.filter(r=>r.short>0);
     if(!rows.length){alert('Nothing to buy — every module is above its company-wide level.');return}
-    const L=['*ElectroBotics — Purchase list*',''];
+    const L=['*'+BIZ_NAME+' — Purchase list*',''];
     rows.forEach((r,i)=>{L.push(`${i+1}. ${r.name} (${r.code})`);
       L.push(`   have ${r.total}, level ${r.min} → *buy ${r.short}*${r.supplier?' · '+r.supplier:''}`)});
     L.push('');L.push('Estimated value: '+CURRENCY+Math.round(rows.reduce((s,r)=>s+r.buyCost,0)).toLocaleString('en-IN'));
@@ -3907,7 +4046,7 @@ function waLowStock(){
   const filt=selCode('lowCentreFilter');
   const rows=a.rows.filter(r=>r.short>0&&(!filt||same(r.centreCode,filt)));
   if(!rows.length){alert('No location is below its Min Qty.');return}
-  const L=['*ElectroBotics — Stock to top up*',''];
+  const L=['*'+BIZ_NAME+' — Stock to top up*',''];
   const byCentre={};
   rows.forEach(r=>{(byCentre[r.centreCode]=byCentre[r.centreCode]||[]).push(r)});
   Object.keys(byCentre).forEach(cc=>{
@@ -3927,7 +4066,7 @@ function waCentreLow(code){
   const rows=a.rows.filter(r=>same(r.centreCode,code)&&r.short>0);
   const c=centreByCode(code);
   if(!rows.length){alert(centreName(code)+' is at or above its Min Qty on everything.');return}
-  const L=['*ElectroBotics — '+centreName(code)+'*','','Stock to top up:',''];
+  const L=['*'+BIZ_NAME+' — '+centreName(code)+'*','','Stock to top up:',''];
   rows.forEach((r,i)=>{
     L.push(`${i+1}. ${r.item['Module Name']}`);
     L.push(`   has ${r.qty}, level ${r.min} → *needs ${r.short}*`);
@@ -3940,7 +4079,7 @@ function waShortfall(){
   const r=requirement();
   const rows=r.rows.filter(x=>x.short>0);
   if(rows.length===0){alert('Nothing short — stock covers every open order.');return}
-  const L=['*ElectroBotics — Purchase list*',''];
+  const L=['*'+BIZ_NAME+' — Purchase list*',''];
   L.push('For open kit orders: '+r.orders.map(o=>{const k=kitByCode(o['Kit Code']);return num(o.Qty)+' × '+(k?k['Kit Name']:o['Kit Code'])}).join(', '));
   L.push('');
   rows.forEach((x,i)=>{
