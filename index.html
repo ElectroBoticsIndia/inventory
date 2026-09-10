@@ -177,6 +177,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .act-btn.wa{color:#128c4b;border-color:#cde8d8;display:inline-flex;align-items:center;justify-content:center;gap:5px}
 .act-btn.wa:hover{background:#25d366;color:#fff;border-color:#25d366}
 .act-btn:disabled{opacity:.55;cursor:wait}
+/* square icon-only action — same 32px box as a text button's height */
+.act-btn.icon{padding:0;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center}
+.act-btn.icon svg{width:15px;height:15px;display:block}
+/* one line on a real screen: the cell's min-content then reserves the width it
+   needs, so rows stay short. On a phone the table scrolls anyway, and wrapping
+   there is preferable to a wider row. */
+@media(min-width:601px){
+  .row-acts.inv-acts{flex-wrap:nowrap}
+  .row-acts.inv-acts>.act-btn{flex:0 0 auto}
+}
 .row-acts{display:flex;gap:6px;flex-wrap:wrap}
 
 /* ─── Badges / chips ─── */
@@ -352,6 +362,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   .row-acts{gap:8px}
   .centre-edit{min-height:36px;padding:8px 14px}
   .kit-act{min-height:36px;padding:8px 12px}
+  .act-btn.icon{width:36px;height:36px;padding:0}
 
   /* small ×/checkbox controls get a finger-sized hit area without growing visually */
   .modal-close{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0}
@@ -401,6 +412,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   .picker-clear.on{display:flex}
   .centre-edit{min-height:36px;padding:8px 14px}
   .kit-act{min-height:36px;padding:8px 12px}
+  .act-btn.icon{width:36px;height:36px;padding:0}
 }
 
 @media(max-width:380px){
@@ -2503,7 +2515,7 @@ function renderInventory(){
                 (note?`<div class="vendor-note">${note}</div>`:'')})()}
           </td>
           <td class="mono" style="font-size:11px">${esc(fmtDate(i.Date))}</td>
-          <td><div class="row-acts">${invRowActions(i['Item Code'])}</div></td></tr>`;
+          <td><div class="row-acts inv-acts">${invRowActions(i['Item Code'])}</div></td></tr>`;
       }).join(''):'<tr><td colspan="16" class="tbl-empty">No items match these filters.</td></tr>')+'</tbody>';
     return;
   }
@@ -2528,7 +2540,7 @@ function renderInventory(){
         <td class="num"><b>${tq}</b></td><td class="num" style="color:var(--text-light)">${cm}</td>
         <td>${badge(companyState(ic))}</td>
         <td class="price-cell"><span class="p">${money(ebCostOf(i),0)}</span><span class="pm">${same(i['Price Mode'],'Manual')?'manual':'+'+MARGIN_PCT+'%'}</span></td>
-        <td><div class="row-acts">${invRowActions(ic)}</div></td></tr>`;
+        <td><div class="row-acts inv-acts">${invRowActions(ic)}</div></td></tr>`;
     }).join(''):`<tr><td colspan="${locs.length+8}" class="tbl-empty">No items match these filters.</td></tr>`)+'</tbody>';
 }
 
@@ -2540,10 +2552,18 @@ let editingItem=null;
  * module's cost record is edited now and then. Per-centre Min Qty sits inside
  * the item form, next to the Default Min Qty it falls back to.
  */
+/**
+ * Stroke icons matching the header nav, drawn at 15px inside a square button.
+ * A price tag for buying options (the dialog is about vendors and rates, not
+ * dates, so a clock would mislead) and a pencil for edit.
+ */
+const ICON_TAG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 12 22l-9-9V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor" stroke="none"/></svg>';
+const ICON_PENCIL='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+
 function invRowActions(code){
   const c=esc(code);
-  return `<button class="act-btn" onclick="openHistory('${c}')">History</button>
-    <button class="act-btn" onclick="openItemForm('${c}')">Edit</button>
+  return `<button class="act-btn icon" title="Buying options" aria-label="Buying options for ${c}" onclick="openHistory('${c}')">${ICON_TAG}</button>
+    <button class="act-btn icon" title="Edit module" aria-label="Edit module ${c}" onclick="openItemForm('${c}')">${ICON_PENCIL}</button>
     <button class="act-btn primary" onclick="openMove('${c}')">Update Stock</button>`;
 }
 
